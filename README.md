@@ -28,7 +28,7 @@ The learning path for the project is:
 
 > Baseline Pipeline → 3D Geometry → GPU Memory → Texture Mapping → Physically-Based Shading
 
-On the academic side this is my BSc Games Production FYP; on the research side it acts as a **pilot for future work in neural rendering and AI‑driven graphics**, and is designed so that ray tracing (`VK_KHR_ray_tracing_pipeline`) and GPU‑accelerated synthetic data generation can be layered in later.[cite:10]
+On the academic side this is my BSc Games Production FYP; on the research side it acts as a **pilot for future work in neural rendering and AI‑driven graphics**, and is designed so that ray tracing (`VK_KHR_ray_tracing_pipeline`) and GPU‑accelerated synthetic data generation can be layered in later.
 
 ---
 
