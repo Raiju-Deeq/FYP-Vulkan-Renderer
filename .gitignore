@@ -1,0 +1,24 @@
+# Build output
+build/
+install/
+
+# Compiled shaders — source is committed, binaries are not
+shaders/*.spv
+
+# vcpkg installed packages — reproduced from vcpkg.json on configure
+vcpkg_installed/
+
+# CLion
+.idea/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# compile_commands.json (optional — some prefer to commit this for clangd)
+# compile_commands.json

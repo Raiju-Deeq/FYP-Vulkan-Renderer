@@ -1,0 +1,13 @@
+//
+// Created by mdeeq0 on 3/27/26.
+//
+
+#ifndef FYP_VULKAN_RENDERER_VULKANCONTEXT_H
+#define FYP_VULKAN_RENDERER_VULKANCONTEXT_H
+
+
+class VulkanContext {
+};
+
+
+#endif //FYP_VULKAN_RENDERER_VULKANCONTEXT_H

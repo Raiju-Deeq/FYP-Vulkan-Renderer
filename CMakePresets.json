@@ -1,0 +1,126 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+
+  "configurePresets": [
+
+    {
+      "name": "base-linux",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+
+    {
+      "name": "base-windows",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
+      "name": "linux-debug",
+      "displayName": "Linux — Debug (Arch)",
+      "description": "Home machine: Arch Linux, Ninja, Debug with ASan + UBSan",
+      "inherits": "base-linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -O0 -fsanitize=address,undefined",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"
+      }
+    },
+
+    {
+      "name": "linux-release",
+      "displayName": "Linux — Release (Arch)",
+      "description": "Home machine: Arch Linux, Ninja, Release",
+      "inherits": "base-linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "uni-debug",
+      "displayName": "Windows DMU — Debug",
+      "description": "DMU lab PCs: Visual Studio 2022, x64, Debug. No admin required.",
+      "inherits": "base-windows",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "uni-release",
+      "displayName": "Windows DMU — Release",
+      "description": "DMU lab PCs: Visual Studio 2022, x64, Release.",
+      "inherits": "base-windows",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+
+  ],
+
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "uni-debug",
+      "configurePreset": "uni-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "uni-release",
+      "configurePreset": "uni-release",
+      "configuration": "Release"
+    }
+  ],
+
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "uni-debug",
+      "configurePreset": "uni-debug",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

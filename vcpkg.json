@@ -1,0 +1,17 @@
+{
+  "name": "vulkan-renderer",
+  "version": "0.1.0",
+  "dependencies": [
+    "vk-bootstrap",
+    "glfw3",
+    "glm",
+    "vulkan-memory-allocator",
+    "stb",
+    "tinyobjloader",
+    {
+      "name": "imgui",
+      "features": ["glfw-binding", "vulkan-binding"]
+    },
+    "spdlog"
+  ]
+}
