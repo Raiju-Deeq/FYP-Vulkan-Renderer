@@ -1,0 +1,5 @@
+Week 1 Day 1 Friday March 27th 2027
+
+Today I began setting up the project. I created a new repository on GitHub and initialized it with a README file. I also set up the basic folder structure for the project, including folders for source code, documentation, and tests.
+Beyond that, I began setting up the cmake files for the project. I created a CMakeLists.txt file in the root directory and started defining the project structure and dependencies. I also set up a basic build configuration to ensure that everything is working correctly.
+
