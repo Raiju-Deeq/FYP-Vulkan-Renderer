@@ -2,8 +2,8 @@
 
 # Vulkan Renderer — C++20
 
-BSc (Hons) Games Production · Final Year Project  
-De Montfort University · 2026  
+BSc (Hons) Games Production · Final Year Project
+De Montfort University · 2026
 Mohamed Deeq Mohamed · P2884884
 
 *Supervisors: Salim Hashu · Dr Conor Fahy*
@@ -20,7 +20,7 @@ Mohamed Deeq Mohamed · P2884884
 
 ## Overview
 
-This repository contains my final year project: a real-time 3D renderer built from scratch using the **Vulkan 1.3 graphics API** and **C++20**.[cite:5]  
+This repository contains my final year project: a real-time 3D renderer built from scratch using the **Vulkan 1.3 graphics API** and **C++20**.
 
 The renderer is built around **Vulkan 1.3 Dynamic Rendering** (`VK_KHR_dynamic_rendering`, promoted to core in 1.3). That means no traditional render passes or framebuffers at all — all colour and depth attachments are defined inline when recording commands, and image layout transitions are handled explicitly via `synchronization2` barriers.
 
@@ -38,6 +38,7 @@ On the academic side this is my BSc Games Production FYP; on the research side i
 |----------------|---------|---------|
 | **Vulkan SDK** (LunarG) | 1.3 | Core graphics API |
 | **C++20** | MSVC / GCC / Clang | Implementation language |
+| **vk-bootstrap** | latest | Vulkan instance, device, and swapchain initialisation |
 | **GLFW** | 3 | Window creation and input |
 | **GLM** | latest | Maths library (vectors, matrices) |
 | **Vulkan Memory Allocator (VMA)** | latest | GPU memory management |
@@ -47,13 +48,16 @@ On the academic side this is my BSc Games Production FYP; on the research side i
 | **spdlog** | latest | Logging |
 | **shaderc / glslc** | latest | GLSL → SPIR‑V compilation |
 
-All dependencies are managed via **vcpkg** in manifest mode and are pulled in automatically on the first CMake configure.[cite:9]
+All dependencies are managed via **vcpkg** in manifest mode and are pulled in automatically on the first CMake configure.
+
+> **Why vk-bootstrap?**  
+> Vulkan instance creation, physical device selection, and queue family setup are necessary but low-value boilerplate — the kind of code that every professional Vulkan project abstracts away. vk-bootstrap handles that cleanly so development effort can go toward the parts that actually matter: the Dynamic Rendering pipeline, synchronisation model, VMA memory strategy, and PBR shading. The technical report covers the underlying initialisation sequence in full so the understanding is demonstrated regardless.
 
 ---
 
 ## Getting Started
 
-The project is developed and tested on **Arch Linux** and **Windows (DMU lab machines)**, but should be portable to any platform with a Vulkan 1.3‑capable GPU and a C++20 toolchain.
+The project is developed and tested on **Arch Linux** and **Windows (DMU lab machines)**, but should work on any platform with a Vulkan 1.3‑capable GPU and a C++20 toolchain.
 
 ### 1. Clone the repo
 
@@ -92,7 +96,7 @@ cmake --build --preset linux-debug
 ### 3. Windows (DMU lab PCs, no admin required)
 
 > First‑time setup only. Run in a normal **Developer Command Prompt** or **cmd.exe**.  
-> vcpkg will cache binaries under `%LOCALAPPDATA%\vcpkg\archives`, so subsequent builds on the same machine are much faster.
+> vcpkg caches binaries under `%LOCALAPPDATA%\vcpkg\archives` so subsequent builds on the same machine are much faster.
 
 ```bat
 REM --- vcpkg setup (once per machine) ---
@@ -118,12 +122,12 @@ cmake --build --preset uni-debug
 
 ## CMake Presets
 
-| Preset        | Platform        | Generator             | Config  |
-|---------------|-----------------|-----------------------|---------|
-| `linux-debug` | Arch Linux      | Ninja                 | Debug   |
-| `linux-release` | Arch Linux    | Ninja                 | Release |
-| `uni-debug`   | Windows (DMU)   | Visual Studio 17 2022 | Debug   |
-| `uni-release` | Windows (DMU)   | Visual Studio 17 2022 | Release |
+| Preset | Platform | Generator | Config |
+|--------|----------|-----------|--------|
+| `linux-debug` | Arch Linux | Ninja | Debug |
+| `linux-release` | Arch Linux | Ninja | Release |
+| `uni-debug` | Windows (DMU) | Visual Studio 17 2022 | Debug |
+| `uni-release` | Windows (DMU) | Visual Studio 17 2022 | Release |
 
 ---
 
@@ -137,8 +141,8 @@ FYP-Vulkan-Renderer/
 ├── vcpkg-configuration.json    # pinned vcpkg baseline
 ├── src/
 │   ├── main.cpp
-│   ├── VulkanContext.cpp/.h    # instance, device, surface, queues
-│   ├── SwapChain.cpp/.h        # swapchain, image views, resize logic
+│   ├── VulkanContext.cpp/.h    # instance, device, surface, queues (via vk-bootstrap)
+│   ├── SwapChain.cpp/.h        # swapchain (via vk-bootstrap), image views, resize logic
 │   ├── Pipeline.cpp/.h         # dynamic rendering pipeline builder
 │   ├── Mesh.cpp/.h             # vertex/index buffers, OBJ loading
 │   ├── Material.cpp/.h         # PBR material parameters, descriptors
@@ -157,28 +161,28 @@ FYP-Vulkan-Renderer/
 
 ## Architecture
 
-A few key architectural decisions drive this project:
+**vk-bootstrap** handles instance creation, physical device selection, logical device setup, and swapchain construction. Everything from the first `vkCmd*` call onwards is written directly against the Vulkan API with no further abstractions — that's where the real learning happens and where the project spends most of its effort.
+
+The remaining architectural decisions:
 
 - **Dynamic Rendering only**  
-  All rendering uses `vkCmdBeginRendering` / `vkCmdEndRendering` with attachments described via `VkRenderingAttachmentInfo`. There are no `VkRenderPass` or `VkFramebuffer` objects anywhere in the codebase.
+  All rendering uses `vkCmdBeginRendering` / `vkCmdEndRendering`. There are no `VkRenderPass` or `VkFramebuffer` objects anywhere in the codebase.
 
 - **Explicit synchronisation**  
-  Image layout transitions are handled with `VkImageMemoryBarrier2` and `synchronization2`. The goal is to understand and control synchronisation, not hide it.
+  Image layout transitions are handled with `VkImageMemoryBarrier2` and `synchronization2`. The goal is to understand and own the synchronisation model, not hide it.
 
-- **VMA‑backed memory model**  
-  All GPU allocations (vertex/index/uniform buffers, textures, depth) go through **Vulkan Memory Allocator (VMA)**, which keeps the memory story consistent and debuggable.
+- **VMA‑backed memory**  
+  All GPU allocations (vertex/index/uniform buffers, textures, depth image) go through **Vulkan Memory Allocator**. Consistent, debuggable, and production-representative.
 
 - **RAII C++20**  
-  Vulkan objects are wrapped in RAII types so lifetime and ownership are explicit. This is both a correctness and a readability decision.
+  Vulkan handles are wrapped in RAII types throughout. Ownership is explicit and shutdown is clean — zero validation errors on exit is a hard requirement at every milestone.
 
 - **ImGui as a first‑class tool**  
-  Dear ImGui is integrated via a second dynamic rendering pass using `VK_ATTACHMENT_LOAD_OP_LOAD`, and is used for material and lighting controls at runtime.
+  Dear ImGui is integrated via a second dynamic rendering pass using `VK_ATTACHMENT_LOAD_OP_LOAD`, giving live runtime control over material and lighting parameters from M4 onwards.
 
 ---
 
 ## Roadmap & Milestones
-
-The project is structured into five milestones, each aligned with a grade band for the university assessment.
 
 | Milestone | Description | Grade Band | Target | Status |
 |----------|-------------|-----------|--------|--------|
@@ -188,67 +192,60 @@ The project is structured into five milestones, each aligned with a grade band f
 | **M4** | PBR shading and lighting | First (70%+) | Week 7 — 18 May | ⏳ Pending |
 | **M5** | Renderer polish and technical report | First (70%+) | Week 9 — 1 Jun | ⏳ Pending |
 
-> A First‑Class outcome requires **both**:  
-> • M1–M5 completed in the artefact, **and**  
-> • A high‑quality technical report.  
-> Neither on its own is enough.
+> A First‑Class outcome requires **both** M1–M5 artefact completion **and** a high-quality technical report. Neither on its own is enough.
 
 ### Milestone details
 
 **M1 — Baseline Vulkan Pipeline**  
-Triangle on screen via Vulkan 1.3 Dynamic Rendering.  
-Instance + device + queues, surface + swapchain, SPIR‑V shader pipeline, `vkCmdBeginRendering` / `vkCmdEndRendering`, and a reusable image layout transition helper.
+vk-bootstrap brings up the instance, physical device, logical device, and swapchain. From there: SPIR‑V shader pipeline, `vkCmdBeginRendering` / `vkCmdEndRendering`, a reusable image layout transition helper, and a coloured triangle on screen.
 
 **M2 — Rotating 3D Cube**  
-Staging‑buffer‑backed vertex and index buffers, depth buffer via VMA, and an MVP matrix pushed per‑frame via a uniform buffer and descriptor set.
+Staging‑buffer‑backed vertex and index buffers, VMA-managed depth image, and an MVP matrix pushed per‑frame via a uniform buffer and descriptor set.
 
 **M3 — OBJ + Texture**  
-`tinyobjloader` for mesh data, combined image sampler in the fragment shader, explicit layout transitions via `synchronization2`, and a generated mipmap chain using `vkCmdBlitImage`.
+`tinyobjloader` for mesh data, combined image sampler in the fragment shader, explicit layout transitions via `synchronization2`, and a mipmap chain generated with `vkCmdBlitImage`.
 
 **M4 — PBR Shading**  
-Cook–Torrance BRDF (GGX NDF, Smith G, Schlick Fresnel) plus Lambertian diffuse. Material parameters (metallic, roughness, albedo) are tweakable live via ImGui, with Blender Cycles used as a visual reference.
+Cook–Torrance BRDF (GGX NDF, Smith G, Schlick Fresnel) plus Lambertian diffuse. Metallic, roughness, and albedo tweakable live via ImGui. Blender Cycles used as a visual reference for validation.
 
 **M5 — Polish + Report**  
-Interactive orbit/FPS camera, robust swapchain resize, clean shutdown with zero validation errors, reproducible CMake build on Windows + Linux, and an 8‑section technical report (architecture, pipeline deep‑dive, shading maths, performance, challenges, reflection, future work).
+Interactive orbit/FPS camera, robust swapchain resize, clean shutdown with zero validation errors, reproducible CMake build on both platforms, and an 8-section technical report.
 
 ---
 
 ## Technical Report
 
-The technical report is a **core deliverable** alongside the renderer. The expected structure is:
+The report is a **core deliverable** alongside the renderer — equal weight to the artefact for a First.
 
-1. **Introduction & Motivation** — Why Vulkan, why C++20, why Dynamic Rendering, and how this ties into future work in neural rendering.
-2. **Architecture Overview** — `VulkanContext`, `SwapChain`, `Pipeline`, `Mesh`, `Material`, `Renderer`, and the RAII patterns used.
-3. **Pipeline Deep‑Dive** — Command sequence, dynamic rendering setup, synchronisation primitives, and VMA usage.
-4. **Shading & Lighting Model** — Derivation of Lambertian + Cook–Torrance (GGX, Smith G, Schlick Fresnel).
-5. **Challenges & Solutions** — Validation errors, sync bugs, memory issues, and how they were diagnosed and fixed.
-6. **Performance Analysis** — RenderDoc frame captures, GPU timings per pass, draw call overhead.
-7. **Critical Reflection** — What works, what doesn’t, and what would change if starting again.
-8. **Conclusion & Future Work** — Ray tracing, post‑effects, neural rendering, synthetic data generation.
-
-I’m maintaining the “Challenges & Solutions” section as a running log across development rather than trying to reconstruct it at the end.
+1. **Introduction & Motivation** — Why Vulkan, why C++20, why Dynamic Rendering, and how this ties into future PhD work in neural rendering
+2. **Architecture Overview** — `VulkanContext`, `SwapChain`, `Pipeline`, `Mesh`, `Material`, `Renderer`; role of vk-bootstrap; RAII patterns
+3. **Pipeline Deep‑Dive** — Command sequence, dynamic rendering setup, synchronisation primitives, VMA usage
+4. **Shading & Lighting Model** — Derivation of Lambertian + Cook–Torrance (GGX, Smith G, Schlick Fresnel)
+5. **Challenges & Solutions** — Validation errors, sync bugs, memory issues — diagnosed and fixed *(running log, maintained throughout)*
+6. **Performance Analysis** — RenderDoc frame captures, GPU timings per pass, draw call overhead
+7. **Critical Reflection** — What works, what doesn't, what would change if starting again
+8. **Conclusion & Future Work** — Ray tracing, post‑effects, neural rendering, synthetic data generation
 
 ---
 
 ## Validation
 
-Vulkan validation layers stay **on** for the entire project. A typical Linux run during development looks like:
+Validation layers stay **on** for the entire project. A clean run looks like:
 
 ```bash
+# Linux
 VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./build/linux-debug/vulkan-renderer
 ```
 
-The goal is a clean startup and shutdown with zero validation errors at every milestone.
+Zero validation errors on startup and shutdown is a hard requirement at every milestone checkpoint.
 
 ---
 
 ## Academic Context
 
-This project is part of my **BSc (Hons) Games Production** degree at De Montfort University and is assessed as my Final Year Project.[cite:11]  
-All work in this repository is my own, completed under the supervision of **Salim Hashu** and **Dr Conor Fahy**, and is intended for educational and research use.
+This project is part of my **BSc (Hons) Games Production** degree at De Montfort University, assessed as my Final Year Project. All work is my own, completed under the supervision of **Salim Hashu** and **Dr Conor Fahy**, and is intended for educational and research use.
 
-If you’re interested in the renderer, the architecture, or the planned follow‑on work in neural rendering, feel free to reach out:  
-**Email:** [mdeeq0@me.com](mailto:mdeeq0@me.com)
+For questions or enquiries: [mdeeq0@me.com](mailto:mdeeq0@me.com)
 
 ---
 
