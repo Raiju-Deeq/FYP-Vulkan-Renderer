@@ -37,7 +37,7 @@ Beyond the degree, this project doubles as a **pilot study for PhD research in n
 ## Tech Stack
 
 | Tool / Library | Version | Purpose |
-|----------------|---------|---------|
+|----------------|---------|---------| 
 | **Vulkan SDK** (LunarG) | 1.3 | Core graphics API |
 | **vk-bootstrap** | latest | Instance, device, swapchain initialisation |
 | **C++20** | MSVC / GCC / Clang | Implementation language |
@@ -137,6 +137,8 @@ FYP-Vulkan-Renderer/
 ├── assets/
 │   ├── models/                  # OBJ + texture assets
 │   └── splats/                  # .ply Gaussian splat scenes
+├── docs/
+│   └── Dev-Log/                 # daily dev log entries
 └── third_party/
 ```
 
@@ -243,6 +245,18 @@ The report is a **core assessed deliverable**, equal weight to the renderer.
 | §8 | Conclusion & Future Work | ⏳ |
 
 §5 is maintained as a running log throughout development — 15 minutes after each session noting any errors hit and how they were fixed.
+
+---
+
+## Dev Log
+
+A daily record of what I built, what broke, and what I learned. Each entry is a standalone markdown file in [`docs/Dev-Log/`](docs/Dev-Log/).
+
+| # | Date | Week | Topic | Entry |
+|---|------|------|-------|-------|
+| 1 | 28 Mar 2026 | Week 1 · Day 1 | Project setup — documentation, MoSCoW, repo structure | [→ Read](docs/Dev-Log/2026-03-28.md) |
+
+> New entries are added after every development session. The log feeds directly into Report §5 (Challenges & Solutions).
 
 ---
 
