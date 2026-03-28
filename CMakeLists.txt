@@ -27,6 +27,8 @@ set(SOURCES
         src/Material.h
         src/Renderer.cpp
         src/Renderer.h
+        src/GaussianSplat.cpp
+        src/GaussianSplat.h
 )
 
 add_executable(vulkan-renderer ${SOURCES})
