@@ -150,3 +150,19 @@ add_custom_command(TARGET vulkan-renderer POST_BUILD
         "$<TARGET_FILE_DIR:vulkan-renderer>/assets"
         COMMENT "Copying assets to build directory"
 )
+
+# --- Doxygen integration ---
+find_package(Doxygen QUIET)
+
+option(BUILD_DOCS "Build API documentation with Doxygen" ON)
+
+if (BUILD_DOCS AND DOXYGEN_FOUND)
+    set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile)
+
+    add_custom_target(docs
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_IN}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs
+            COMMENT "Generating API documentation with Doxygen"
+            VERBATIM
+    )
+endif()
