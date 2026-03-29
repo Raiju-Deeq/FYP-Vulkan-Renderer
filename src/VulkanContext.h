@@ -1,16 +1,20 @@
 /**
- * @file VulkanContext.h
- * @brief Vulkan instance, physical/logical device and queue management.
+* @file VulkanContext.h
+ * @brief Core Vulkan bootstrapping: instance, device, queues and validation.
  *
- * Wraps vk-bootstrap initialisation and owns the core Vulkan handles
- * (VkInstance, VkPhysicalDevice, VkDevice, graphics/present queues and
- * VkSurfaceKHR) for the lifetime of the application.
+ * VulkanContext owns the fundamental Vulkan objects that must exist before
+ * any rendering work can begin:
+ *   - VkInstance (with validation layers in debug builds)
+ *   - VkDebugUtilsMessengerEXT (validation callback, debug builds only)
+ *   - VkPhysicalDevice (GPU selection via vk-bootstrap)
+ *   - VkDevice (logical device)
+ *   - Graphics and present VkQueues + their family indices
  *
- * @author Mohamed Deeq Mohamed
- * @date   2026-03-27
+ * All handles are created in init() and destroyed in destroy() in strict
+ * reverse order. No other class should own or destroy these handles.
  *
- * @note This class is the first object constructed and the last destroyed.
- *       All other renderer objects hold a non-owning reference to it.
+ * @author Mohamed Deeq Mohamed (P2884884)
+ * @date   2026-03-29
  */
 
 #ifndef FYP_VULKAN_RENDERER_VULKANCONTEXT_H
