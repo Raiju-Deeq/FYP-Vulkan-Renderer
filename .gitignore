@@ -1,6 +1,9 @@
-# Build output
+# Build output — all CMake preset build dirs
 build/
 install/
+
+# Doxygen generated output — rebuilt with: cmake --build --preset <preset> --target docs
+docs/doxygen/
 
 # Compiled shaders — source is committed, binaries are not
 shaders/*.spv
@@ -15,6 +18,9 @@ vcpkg_installed/
 .vs/
 *.user
 *.suo
+
+# VS Code
+.vscode/
 
 # OS
 .DS_Store
