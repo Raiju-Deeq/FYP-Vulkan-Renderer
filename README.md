@@ -321,8 +321,29 @@ A daily record of what I built, what broke, and what I learned. Each entry is a 
 |---|------|------|-------|-------|
 | 1 | 28 Mar 2026 | Week 1 · Day 1 | Project setup — documentation, MoSCoW, repo structure | [→ Read](docs/Dev-Log/2026-03-28.md) |
 | 2 | 29 Mar 2026 | Week 1 · Day 2 | Doxygen headers on all src/ files; VulkanContext init() planning | [→ Read](docs/Dev-Log/2026-03-29.md) |
+| 3 | 30 Mar 2026 | Week 1 · Day 3 | CMakeLists fix, VulkanContext plan, M1 concept learning | [→ Read](docs/Dev-Log/2026-03-30.md) |
 
 > New entries are added after every development session. The log feeds directly into Report §5 (Challenges & Solutions).
+
+---
+
+## Learnings
+
+Concept notes written before each milestone to understand the "why" before writing code. Each entry is a standalone markdown file in [`docs/Learnings/`](docs/Learnings/).
+
+| # | Milestone | Topic | Entry |
+|---|-----------|-------|-------|
+| 1 | M1 | Vulkan object chain — instance, device, queues, swapchain, pipeline, command buffers, synchronisation | [→ Read](docs/Learnings/Learnings1.md) |
+
+---
+
+## Plans
+
+Implementation plans written before coding begins. Each entry is a standalone markdown file in [`docs/Plan/`](docs/Plan/).
+
+| # | Date | Milestone | Topic | Entry |
+|---|------|-----------|-------|-------|
+| 1 | 30 Mar 2026 | M1 | VulkanContext — instance, device, queues via vk-bootstrap | [→ Read](docs/Plan/Week%201%20Day%203%20Plan.md) |
 
 ---
 
