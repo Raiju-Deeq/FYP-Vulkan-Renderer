@@ -20,9 +20,12 @@ docs/doxygen/
 vcpkg_installed/
 
 # ============================================================
-# Obsidian vault config — local plugin/theme state, not project content
+# Obsidian vault config — local plugin/theme/workspace state only
+# These files change on every Obsidian open and must never be committed
+# Run once to untrack: git rm -r --cached docs/FYP-Vault/.obsidian/
 # ============================================================
-docs/FYP-Vault/.obsidian/
+.obsidian/
+**/.obsidian/
 
 # ============================================================
 # IDE and editor
