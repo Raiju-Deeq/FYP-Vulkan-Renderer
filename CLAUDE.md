@@ -127,3 +127,32 @@ Define these shortcuts:
 /validate — Run cmake build + validation layers and report errors
 /report [section] — Draft a paragraph for the given report section from dev logs
 /plan [task] — Outline steps to implement the task before doing it
+
+
+
+## VAULT AWARENESS
+
+All project notes live in `docs/vault/`. When creating or editing notes:
+1. Use Obsidian Flavored Markdown (wikilinks, callouts, front-matter properties)
+2. Dev logs go in `docs/vault/Dev-Log/YYYY-MM-DD.md`
+3. Research notes go in `docs/vault/Research/`
+4. Planning docs go in `docs/vault/Plans/`
+5. Always add YAML front-matter with `date`, `tags`, and `status` fields
+
+## VAULT NOTE TEMPLATE
+
+When generating any vault note:
+---
+date: YYYY-MM-DD
+tags: [vulkan, fyp, <topic>]
+status: draft | in-progress | complete
+---
+
+## SLASH COMMANDS (extended)
+
+/devlog       — Generate today's dev log from git diff + session context → docs/vault/Dev-Log/YYYY-MM-DD.md
+/note [topic] — Create a research note in docs/vault/Research/<topic>.md with proper front-matter
+/plan [task]  — Create a planning doc in docs/vault/Plans/<task>.md with milestones and steps
+/docme [file] — Add/fix Doxygen comments on the specified file
+/validate     — Run cmake build + validation layers and report errors
+/report [sec] — Draft a report section paragraph from dev logs in docs/vault/Dev-Log/
