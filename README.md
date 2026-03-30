@@ -18,6 +18,27 @@ Mohamed Deeq Mohamed · P2884884
 
 ---
 
+## Contents
+
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [CMake Presets](#cmake-presets)
+- [API Documentation (Doxygen)](#api-documentation-doxygen)
+- [Project Layout](#project-layout)
+- [Architecture](#architecture)
+- [MoSCoW Prioritisation](#moscow-prioritisation)
+- [Roadmap](#roadmap)
+- [Milestone Details](#milestone-details)
+- [Technical Report](#technical-report)
+- [Dev Log](#dev-log)
+- [Learnings](#learnings)
+- [Plans](#plans)
+- [Validation](#validation)
+- [Academic Context](#academic-context)
+
+---
+
 ## Overview
 
 This is my final year project: a real-time 3D renderer built from scratch using **Vulkan 1.3** and **C++20**, submitted for BSc (Hons) Games Production at De Montfort University.
