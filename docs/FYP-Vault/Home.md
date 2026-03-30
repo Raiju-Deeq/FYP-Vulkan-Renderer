@@ -88,16 +88,16 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 ## ⚠️ Risk Register
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|------|------------|--------|------------|
-| 1 | Report deprioritised in favour of artefact | High | High | Start report in Week 4 |
-| 2 | Vulkan sync errors eating development time | Medium | Medium | Validation layers always on |
-| 3 | Image layout transition errors (Dynamic Rendering) | Medium | Medium | Reusable `transitionImageLayout` helper from M1 |
-| 4 | M6 causing scope creep | Medium | Medium | Hard gate behind M3; dropped immediately if M3 slips |
-| 5 | vk-bootstrap swapchain incompatibility on DMU lab drivers | Low | Medium | Fallback control exposed, verified before M1 sign-off |
-| 6 | CMake/vcpkg build failures across platforms | Low | Low | Both presets verified on clean environments |
-| 7 | RenderDoc unavailable on DMU lab GPU | Low | Low | Local machine primary for profiling |
-| 8 | `.ply` parser perf for large splat files | Low | Low | Cap at 1M splats for M6 scope |
+| #   | Risk                                                                                                           | Likelihood    | Impact | Mitigation                                                 |
+| --- | -------------------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------------------------------------------------- |
+| 1   | Report deprioritised in favour of artefact                                                                     | High          | High   | Start report in Week 4                                     |
+| 2   | Vulkan sync errors eating development time                                                                     | Medium        | Medium | Validation layers always on                                |
+| 3   | Image layout transition errors (Dynamic Rendering)                                                             | Medium        | Medium | Reusable `transitionImageLayout` helper from M1            |
+| 4   | M6 causing scope creep                                                                                         | Medium        | Medium | Hard gate behind M3; dropped immediately if M3 slips       |
+| 5   | vk-bootstrap swapchain incompatibility on DMU lab drivers                                                      | Low           | Medium | Fallback control exposed, verified before M1 sign-off      |
+| 6   | CMake/vcpkg build failures across platforms                                                                    | Low           | Low    | Both presets verified on clean environments                |
+| 7   | Issues building for multiple platforms Linux based Arch system at home and Windows based systems at Uni Campus | Medium - High | High   | Prioritize working at Uni Campus if this issue becomes big |
+| 8   | `.ply` parser perf for large splat files                                                                       | Low           | Low    | Cap at 1M splats for M6 scope                              |
 
 ---
 
