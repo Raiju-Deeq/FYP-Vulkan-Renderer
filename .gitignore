@@ -12,7 +12,7 @@ shaders/*.spv
 vcpkg_installed/
 
 # Obsidian vault config — local plugin/theme state, not project content
-docs/vault/.obsidian/
+docs/FYP-Vault/.obsidian/
 
 # CLion
 .idea/
