@@ -1,110 +1,136 @@
-# Learnings — M1 Vulkan Object Chain
+# Vulkan Object Chain — M1 Core Concepts
 
 **Date:** 2026-03-30
 **Milestone:** M1 — Baseline Vulkan Pipeline + Triangle
-**Goal:** Understand the Vulkan object chain required to render a single triangle
+**Goal:** Understand every object required to render a single triangle, and *why* each one exists
 
 ---
 
 ## What Happens Before a Triangle Appears
 
-Vulkan is explicit about **everything**. Unlike OpenGL where drivers make hidden decisions, Vulkan requires you to set up a chain of objects manually.
+Vulkan is explicit about **everything**. Unlike OpenGL where drivers make hidden decisions, Vulkan requires you to set up a chain of objects manually. Here is the chain for M1, and why each piece exists.
 
 ---
 
-## 1. VkInstance — "Hello, Vulkan"
+## 1. VkInstance — “Hello, Vulkan”
 
-The instance is the application's connection to the Vulkan loader/driver. It declares:
+The instance is the application’s connection to the Vulkan loader/driver. It declares:
 - What Vulkan version we need (1.3)
 - What validation layers we want (error checking during development)
 - What instance-level extensions we need (debug messenger, surface)
 
-**Why it matters:** Without it, we cannot talk to the GPU at all.
+**Why it matters:** Without it, we cannot talk to the GPU at all. Think of it as opening a socket before sending any data — nothing else is possible until this exists.
 
 ---
 
-## 2. VkSurfaceKHR — "Where will pixels go?"
+## 2. VkSurfaceKHR — “Where will pixels go?”
 
-A surface is the bridge between Vulkan and the windowing system (GLFW/X11/Wayland/Win32).
+A surface is the bridge between Vulkan and the windowing system (GLFW / X11 / Wayland / Win32). It represents the OS window that will receive rendered output.
 
-**Why it matters:** Vulkan does not assume rendering targets a screen — we have to explicitly say "I want to present to *this* window."
+**Why it matters:** Vulkan does not assume rendering targets a screen at all — it could render offscreen, to VR headsets, or into compute pipelines. We have to explicitly say “I want to present to *this* window.”
 
 ---
 
-## 3. VkPhysicalDevice — "Which GPU?"
+## 3. VkPhysicalDevice — “Which GPU?”
 
-For this project we require three **Vulkan 1.3 core features**:
+A machine may have multiple GPUs (integrated Intel + discrete NVIDIA). Physical device selection queries what each GPU supports and picks the best match. If we skip feature checking the app will crash on unsupported hardware — vk-bootstrap handles this selection.
+
+This project requires three **Vulkan 1.3 core features**:
 
 | Feature | Purpose |
 |---------|---------|
-| `dynamicRendering` | Describe render attachments inline — no VkRenderPass needed |
-| `synchronization2` | Cleaner explicit API for pipeline barriers and image layout transitions |
-| `bufferDeviceAddress` | Raw GPU pointer access to buffers — needed for M6 Gaussian splatting |
+| `dynamicRendering` | Describe render attachments inline at command recording time — no `VkRenderPass` objects needed. The architectural foundation of this renderer. |
+| `synchronization2` | Cleaner, more explicit API for pipeline barriers and image layout transitions. Replaces the confusing old barrier API entirely. |
+| `bufferDeviceAddress` | Lets shaders access buffers via raw GPU pointers. Required for M6 Gaussian Splatting splat buffers. |
 
 ---
 
-## 4. VkDevice — "Open a channel to the GPU"
+## 4. VkDevice — “Open a channel to the GPU”
 
-The logical device is the working connection to the chosen physical GPU. All Vulkan objects are created from this device — it is the factory for everything.
-
----
-
-## 5. VkQueue — "The GPU's inbox"
-
-Queues are how work is submitted to the GPU. Commands are recorded into buffers, then submitted to a queue. The GPU processes them asynchronously.
+The logical device is the working connection to the chosen physical GPU. All Vulkan objects — buffers, images, pipelines, command pools — are created through this device. Every Vulkan call after this point takes `VkDevice` as a parameter. It is the factory for everything.
 
 ---
 
-## 6. VkSwapchain — "Double-buffered display"
+## 5. VkQueue — “The GPU’s inbox”
 
-The swapchain is a ring of images rotating between "being rendered to" and "being displayed." We use 2 images (`MAX_FRAMES_IN_FLIGHT = 2`) — double buffering.
-
----
-
-## 7. VkPipeline — "How to draw"
-
-The graphics pipeline is the compiled GPU program: shaders + all fixed-function state. In Vulkan, pipelines are **immutable** — compiled once upfront.
-
-**Key M1 detail:** With **Dynamic Rendering** (Vulkan 1.3), we pass a `VkPipelineRenderingCreateInfo` instead of referencing a `VkRenderPass`.
+Queues are how work reaches the GPU. The GPU exposes multiple queue families (graphics, compute, transfer). We need a **graphics queue** — it can handle rendering, compute, and transfer. Commands are recorded into command buffers and then submitted to a queue; the GPU processes them asynchronously.
 
 ---
 
-## 8. Command Buffers + Synchronisation
+## 6. VkSwapchainKHR — “Double-buffered display”
 
-Each frame:
-1. **Acquire** a swapchain image (semaphore signals when ready)
-2. **Record** commands — transition layout → begin rendering → bind pipeline → draw → end rendering → transition layout
-3. **Submit** command buffer to graphics queue
-4. **Present** image to screen
-
-Fences throttle the CPU so it does not race ahead of the GPU.
+The swapchain is a ring of images rotating between “being rendered to” and “being displayed on screen.” This project uses 2 images (`MAX_FRAMES_IN_FLIGHT = 2`) — double buffering. Without it, rendering to a single image would cause tearing or stalling while the monitor finishes displaying the previous frame.
 
 ---
 
-## The Full Object Chain
+## 7. VkPipeline — “How to draw”
+
+The graphics pipeline is the compiled GPU program: vertex and fragment shaders plus all fixed-function state (viewport, rasteriser, depth test, blending, vertex input format). Pipelines in Vulkan are **immutable** — compiled once upfront, never modified.
+
+**Key M1 detail:** Normally a pipeline must reference a `VkRenderPass` to know the attachment format. With **Dynamic Rendering** (Vulkan 1.3), we instead provide a `VkPipelineRenderingCreateInfo` that describes the attachment format inline — no `VkRenderPass` object is ever created.
+
+---
+
+## 8. Command Buffers + Synchronisation — “What to draw, and when”
+
+Each frame follows this sequence:
+
+1. **Acquire** a swapchain image (semaphore signals when the image is ready)
+2. **Record** commands into a command buffer:
+   - Transition image layout `UNDEFINED → COLOR_ATTACHMENT_OPTIMAL` (barrier)
+   - `vkCmdBeginRendering` — begin dynamic rendering pass
+   - Bind pipeline
+   - Draw
+   - `vkCmdEndRendering`
+   - Transition image layout `COLOR_ATTACHMENT_OPTIMAL → PRESENT_SRC_KHR` (barrier)
+3. **Submit** the command buffer to the graphics queue
+4. **Present** the image to the screen
+
+Fences throttle the CPU so it cannot submit more than `MAX_FRAMES_IN_FLIGHT` frames ahead of the GPU.
+
+---
+
+## Image Layout Transitions
+
+Vulkan images have **layouts** that describe how GPU memory is physically arranged for a given operation. Two transitions are required every frame:
+
+| From | To | When |
+|------|----|------|
+| `UNDEFINED` | `COLOR_ATTACHMENT_OPTIMAL` | Before rendering into the image |
+| `COLOR_ATTACHMENT_OPTIMAL` | `PRESENT_SRC_KHR` | Before handing the image to the swapchain for display |
+
+Transitions are performed via `VkImageMemoryBarrier2` (synchronization2). This is what “explicit synchronisation” means in the architecture — no hidden state, no driver guesswork. Source and destination stage/access masks must be specified explicitly for every transition.
+
+---
+
+## Full Object Chain
 
 ```
 VkInstance → VkSurfaceKHR → VkPhysicalDevice → VkDevice → VkQueue
-                                                    |
-                                             VkSwapchainKHR
-                                                    |
-                                        VkPipeline (Dynamic Rendering)
-                                                    |
-                                        Command Buffers + Sync
-                                                    |
-                                                 Triangle!
+                                                      |
+                                               VkSwapchainKHR
+                                                      |
+                                          VkPipeline (Dynamic Rendering)
+                                                      |
+                                          Command Buffers + Sync
+                                                      |
+                                                   Triangle!
 ```
 
-Create top-to-bottom. Destroy bottom-to-top (RAII).
+Create top-to-bottom. Destroy bottom-to-top (RAII reverse order).
 
 ---
 
 ## Learning Resources
 
-- **vkguide.dev** (Chapter 1) — uses vk-bootstrap just like this project. Best starting point.
-- **vulkan-tutorial.com** (up to "Drawing a triangle") — classic reference, adapts to Dynamic Rendering
-- **Brendan Galea — Vulkan Game Engine Tutorial** (episodes 1-6)
-- **TU Wien — Vulkan Lecture Series** — academic perspective on API design
+### Written
+- **[vkguide.dev](https://vkguide.dev/)** — Chapter 1: “Initialising Vulkan”. Uses vk-bootstrap directly, architecturally closest to this project. **Best starting point.**
+- **[vulkan-tutorial.com](https://vulkan-tutorial.com/)** — Classic reference up to “Drawing a triangle”. Uses `VkRenderPass`; adapt to Dynamic Rendering.
+
+### Video
+- **Brendan Galea — Vulkan Game Engine Tutorial** (episodes 1–6) — step-by-step C++ series covering instance through first triangle
+- **Travis Vroman — Kohi Game Engine** (Vulkan series) — same ground with more architectural discussion
+- **TU Wien — Vulkan Lecture Series** — academic perspective on the API design rationale
 
 ---
 
