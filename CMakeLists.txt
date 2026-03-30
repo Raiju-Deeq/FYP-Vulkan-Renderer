@@ -12,23 +12,10 @@ set(SOURCES
         src/VulkanContext.cpp
         src/SwapChain.cpp
         src/Pipeline.cpp
+        src/Renderer.cpp
         src/Mesh.cpp
         src/Material.cpp
-        src/Renderer.cpp
-        src/VulkanContext.cpp
-        src/VulkanContext.h
-        src/SwapChain.cpp
-        src/SwapChain.h
-        src/Pipeline.cpp
-        src/Pipeline.h
-        src/Mesh.cpp
-        src/Mesh.h
-        src/Material.cpp
-        src/Material.h
-        src/Renderer.cpp
-        src/Renderer.h
         src/GaussianSplat.cpp
-        src/GaussianSplat.h
 )
 
 add_executable(vulkan-renderer ${SOURCES})
