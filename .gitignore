@@ -11,6 +11,9 @@ shaders/*.spv
 # vcpkg installed packages — reproduced from vcpkg.json on configure
 vcpkg_installed/
 
+# Obsidian vault config — local plugin/theme state, not project content
+docs/vault/.obsidian/
+
 # CLion
 .idea/
 
