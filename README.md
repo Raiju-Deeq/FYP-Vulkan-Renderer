@@ -1,83 +1,224 @@
 <div align="center">
 
+<br />
+
 # Vulkan Renderer — C++20
 
-BSc (Hons) Games Production · Final Year Project  
-De Montfort University · 2026  
-Mohamed Deeq Mohamed · P2884884
+<br />
 
-*Supervisors: Salim Hashu · Dr Conor Fahy*
+*BSc (Hons) Games Production · Final Year Project*  
+*De Montfort University, Leicester · Academic Year 2025–2026*
 
-![C++](https://img.shields.io/badge/C%2B%2B-20-blue?style=flat-square&logo=cplusplus)
-![Vulkan](https://img.shields.io/badge/Vulkan-1.3-red?style=flat-square&logo=vulkan)
-![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?style=flat-square&logo=cmake)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey?style=flat-square)
-![License](https://img.shields.io/badge/License-Academic-green?style=flat-square)
+<br />
+
+**Mohamed Deeq Mohamed** · P2884884  
+Supervisors: Salim Hashu · Dr Conor Fahy
+
+<br />
+
+![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white)
+![Vulkan](https://img.shields.io/badge/Vulkan-1.3-AC162C?style=flat-square&logo=vulkan&logoColor=white)
+![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?style=flat-square&logo=cmake&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey?style=flat-square&logo=linux&logoColor=white)
+![Doxygen](https://img.shields.io/badge/Docs-Doxygen-2C4AA8?style=flat-square)
+![Obsidian](https://img.shields.io/badge/Notes-Obsidian-7C3AED?style=flat-square&logo=obsidian&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Week%201%20of%209-orange?style=flat-square)
+
+<br />
+
+> *A real-time Vulkan 1.3 renderer built from scratch in C++20, targeting Dynamic Rendering,*  
+> *explicit GPU synchronisation, and physically based shading —*  
+> *with a stretch goal of real-time 3D Gaussian Splatting as a pilot for PhD research in neural rendering.*
+
+<br />
 
 </div>
 
 ---
 
-## Contents
+## Table of Contents
 
-- [Overview](#overview)
+- [Project Overview](#project-overview)
+- [Knowledge System](#knowledge-system)
+- [Architecture](#architecture)
+- [MoSCoW Prioritisation](#moscow-prioritisation)
+- [Milestone Roadmap](#milestone-roadmap)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 - [CMake Presets](#cmake-presets)
 - [API Documentation (Doxygen)](#api-documentation-doxygen)
 - [Project Layout](#project-layout)
-- [Architecture](#architecture)
-- [MoSCoW Prioritisation](#moscow-prioritisation)
-- [Roadmap](#roadmap)
-- [Milestone Details](#milestone-details)
 - [Technical Report](#technical-report)
-- [Dev Log](#dev-log)
-- [Learnings](#learnings)
-- [Plans](#plans)
-- [Validation](#validation)
+- [Development Log](#development-log)
 - [Academic Context](#academic-context)
 
 ---
 
-## Overview
+## Project Overview
 
-This is my final year project: a real-time 3D renderer built from scratch using **Vulkan 1.3** and **C++20**, submitted for BSc (Hons) Games Production at De Montfort University.
+This project is a real-time 3D renderer implemented from first principles using the **Vulkan 1.3 API** and **C++20**, submitted as the Final Year Project for BSc (Hons) Games Production at De Montfort University. It is intentionally scoped as a **renderer, not an engine** — no physics, ECS, audio, or scene graph. Those are deliberate omissions, not gaps.
 
-The renderer is built entirely around **Vulkan 1.3 Dynamic Rendering** — no `VkRenderPass`, no `VkFramebuffer`, ever. Colour and depth attachments are described inline at command recording time, and all image layout transitions are handled explicitly via `synchronization2` barriers. Vulkan initialisation (instance, device, swapchain) is handled by **vk-bootstrap**, freeing development focus for the rendering systems that actually matter.
+The renderer is built entirely around **Vulkan 1.3 Dynamic Rendering** — no `VkRenderPass`, no `VkFramebuffer`, ever. Colour and depth attachments are described inline at command recording time via `vkCmdBeginRendering`, and all image layout transitions are managed explicitly through `VkImageMemoryBarrier2` (synchronization2). Vulkan initialisation (instance, device, swapchain) is handled by **vk-bootstrap**, focusing development effort on the rendering systems that matter.
 
-The development path is:
+Beyond the degree, this project serves as a **pilot study for planned PhD research in neural rendering at De Montfort University**, and is deliberately architected to accommodate future work with `VK_KHR_ray_tracing_pipeline` and GPU-accelerated synthetic data pipelines.
 
-> Baseline Pipeline → 3D Geometry → GPU Memory → Texture Mapping → **(Could Have)** PBR Shading → **(Stretch)** Gaussian Splatting
+```
+Baseline Pipeline → 3D Geometry → GPU Memory → Texture Mapping
+     → (Could Have) PBR Shading → (Stretch) 3D Gaussian Splatting
+```
 
-Beyond the degree, this project doubles as a **pilot study for PhD research in neural rendering**, and is deliberately architected so that `VK_KHR_ray_tracing_pipeline` and GPU-accelerated synthetic data generation can be layered in post-graduation.
+---
 
-> **This is a renderer, not a game engine.** There is no physics, no ECS, no audio, no scene graph, and no shadow mapping. Those are intentional omissions, not gaps.
+## Knowledge System
+
+This project uses an integrated knowledge management system to maintain rigorous documentation throughout the development cycle. The system connects source code, API documentation, and project notes into a single coherent record.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Knowledge Pipeline                       │
+│                                                             │
+│  Source Code  ──→  Doxygen  ──→  API Reference (HTML)      │
+│      │                                                      │
+│      │          Claude Code  ──→  Session Assistance        │
+│      │               │                                      │
+│      └──────────────→│──→  Obsidian Vault                   │
+│                       │         ├── 02-Dev-Log/             │
+│                       │         ├── 01-Plans/               │
+│                       │         ├── 03-Learnings/           │
+│                       │         └── Research/               │
+│                       │                                      │
+│                       └──→  Technical Report                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Obsidian Vault
+
+All project notes, dev logs, plans, and research are maintained in an [Obsidian](https://obsidian.md/) vault at [`docs/FYP-Vault/`](docs/FYP-Vault/). The vault is version-controlled alongside the source code, providing a persistent, linked knowledge base that feeds directly into the technical report.
+
+| Section | Location | Purpose |
+|---------|----------|---------|
+| **Home** | [`docs/FYP-Vault/Home.md`](docs/FYP-Vault/Home.md) | Vault index — overview, MoSCoW, architecture, risk register |
+| **Dev Logs** | [`docs/FYP-Vault/02-Dev-Log/`](docs/FYP-Vault/02-Dev-Log/) | Daily session records — feeds Report §5 & §6 |
+| **Plans** | [`docs/FYP-Vault/01-Plans/`](docs/FYP-Vault/01-Plans/) | Milestone implementation plans |
+| **Learnings** | [`docs/FYP-Vault/03-Learnings/`](docs/FYP-Vault/03-Learnings/) | Concept notes — Vulkan deep-dives |
+| **Research** | [`docs/FYP-Vault/Research/`](docs/FYP-Vault/Research/) | Gaussian splatting, PBR, neural rendering |
+
+Open the vault in Obsidian: **File → Open vault → `docs/FYP-Vault/`**
+
+### Doxygen API Reference
+
+All public APIs are documented with Doxygen Javadoc-style headers. The generated HTML reference is built on demand (not committed — see [API Documentation](#api-documentation-doxygen)).
+
+### Claude Code Integration
+
+The project ships with a `.claude/` skills directory enabling [Claude Code](https://claude.ai/code) to work with Obsidian Flavored Markdown, generate dev logs, and assist with implementation — all from the repo root. See [`CLAUDE.md`](CLAUDE.md) for the full specification.
+
+---
+
+## Architecture
+
+### Module Responsibilities
+
+| Module | Role |
+|--------|------|
+| `VulkanContext` | Instance, physical/logical device, graphics queue (via vk-bootstrap) |
+| `SwapChain` | Swapchain, `VkImage[]`, `VkImageView[]`, resize handling |
+| `Pipeline` | SPIR-V loading, `VkPipeline`, `VkPipelineLayout`, `VkDescriptorSetLayout` |
+| `Renderer` | Per-frame loop: command pool/buffers, semaphores, fences, `drawFrame()` |
+| `Mesh` | Vertex/index buffers (device-local, allocated via VMA) |
+| `Material` | PBR uniform buffer, descriptor set, textures (`VkImage` / `VkSampler`) |
+| `GaussianSplat` | GPU storage buffer for 3D Gaussian splatting — M6 stretch goal |
+
+### Key Design Decisions
+
+**Dynamic Rendering only** — `vkCmdBeginRendering` / `vkCmdEndRendering` throughout. Zero `VkRenderPass` or `VkFramebuffer` objects. This reflects current industry direction and simplifies the path toward M6 and future ray tracing work.
+
+**Explicit synchronisation** — all image layout transitions via `VkImageMemoryBarrier2` (synchronization2). No hidden state, no driver assumptions. Every transition is documented with its source and destination stage/access masks.
+
+**VMA for all GPU memory** — no direct `vkAllocateMemory` calls. Vertex, index, uniform, texture, depth, and splat buffers all go through Vulkan Memory Allocator, ensuring correct alignment and suballocation.
+
+**RAII C++20** — Vulkan handles are wrapped in classes with destructors. Object lifetime and ownership are always explicit.
+
+**Double-buffered** — `MAX_FRAMES_IN_FLIGHT = 2`. Per-frame semaphores and fences throttle the CPU so it cannot race more than one frame ahead of the GPU.
+
+### Shader Pipeline
+
+| Shader Pair | Milestone | Purpose |
+|-------------|-----------|----------|
+| `triangle.vert/frag` | M1 | Baseline Dynamic Rendering validation |
+| `mesh.vert` + `pbr.frag` | M2–M4 | Geometry, UVs, Cook–Torrance BRDF |
+| `splat.vert/frag` | M6 | Gaussian ellipse projection + alpha compositing |
+
+All GLSL sources live in `shaders/`. CMake compiles them to `.spv` via `glslc` at build time. Compiled `.spv` files are gitignored.
+
+---
+
+## MoSCoW Prioritisation
+
+### 🔴 Must Have
+- **M1** — Vulkan 1.3 environment, triangle via Dynamic Rendering, zero validation errors
+- **M2** — Rotating 3D cube, VMA vertex/index buffers, depth image, MVP UBO
+- RAII C++20 codebase with Doxygen-documented public API throughout
+- Reproducible CMake + vcpkg build on Linux (Arch) and Windows (DMU lab)
+- Public GitHub repository with a sustained, meaningful commit history
+- Technical report: all 8 sections complete
+
+### 🟡 Should Have
+- **M3** — OBJ mesh loading, texture mapping with mipmaps, Dear ImGui runtime panel
+- Interactive orbit / FPS camera
+- Swapchain resize handled cleanly via vk-bootstrap
+
+### 🟢 Could Have
+- **M4** — PBR shading: Cook–Torrance BRDF (GGX NDF, Smith G, Schlick Fresnel), Blender Cycles visual reference
+- **M6** — 3D Gaussian Splatting: `.ply` loader, GPU splat buffers, depth sort, screen-space projection, alpha compositing
+- RenderDoc performance captures at each milestone
+
+### ⬜ Won't Have *(intentional scope decisions)*
+Physics, ECS, audio, shadow mapping, deferred shading, skeletal animation, NeRF training, `VK_KHR_ray_tracing_pipeline`, multi-GPU, mobile/console support.
+
+---
+
+## Milestone Roadmap
+
+| Milestone | Description | Priority | Target | Status |
+|-----------|-------------|----------|--------|--------|
+| **M1** | Baseline Vulkan 1.3 pipeline + triangle | 🔴 Must | Wk 2 — 13 Apr | ⏳ In Progress |
+| **M2** | Rotating 3D cube + VMA buffers | 🔴 Must | Wk 3 — 20 Apr | ⏳ Pending |
+| **M3** | OBJ loading + texture mapping + ImGui | 🟡 Should | Wk 5 — 4 May | ⏳ Pending |
+| **M4** | PBR shading (Cook–Torrance BRDF) | 🟢 Could | Wk 7 — 18 May | ⏳ Pending |
+| **M5** | Polish + technical report | 🔴 Must | Wk 9 — 1 Jun | ⏳ Pending |
+| **M6** | 3D Gaussian Splatting (`.ply` → GPU) | 🟢 Could | Post M3 | ⏳ Stretch |
+
+> M6 is hard-gated behind M3 sign-off. M4 and M6 are independent — either can be pursued first depending on progress after M3.
 
 ---
 
 ## Tech Stack
 
-| Tool / Library | Version | Purpose |
-|----------------|---------|---------| 
-| **Vulkan SDK** (LunarG) | 1.3 | Core graphics API |
-| **vk-bootstrap** | latest | Instance, device, swapchain initialisation |
-| **C++20** | MSVC / GCC / Clang | Implementation language |
-| **GLFW** | 3 | Window creation and input |
-| **GLM** | latest | Maths (vectors, matrices) |
-| **Vulkan Memory Allocator (VMA)** | latest | GPU memory management |
-| **stb_image** | latest | Texture / image loading |
-| **tinyobjloader** | latest | OBJ mesh loading |
-| **Dear ImGui** | latest | Runtime material / lighting UI |
-| **spdlog** | latest | Structured logging |
-| **shaderc / glslc** | latest | GLSL → SPIR-V compilation |
-
-All dependencies managed via **vcpkg** manifest mode — pulled in automatically on first CMake configure.
+| Tool / Library | Purpose |
+|----------------|---------|
+| **Vulkan 1.3** (LunarG SDK) | Core graphics API |
+| **vk-bootstrap** | Instance, device, swapchain initialisation |
+| **C++20** | Implementation language (RAII, concepts, ranges) |
+| **GLFW 3** | Window creation and input handling |
+| **GLM** | Mathematics — depth `[0,1]`, radians enforced via CMake defines |
+| **Vulkan Memory Allocator** | All GPU memory allocation and suballocation |
+| **stb_image** | Texture and image loading |
+| **tinyobjloader** | OBJ mesh loading (M3) |
+| **Dear ImGui** | Runtime debug overlay (GLFW + Vulkan backends) |
+| **spdlog** | Structured, levelled logging |
+| **glslc** | GLSL → SPIR-V compilation (integrated via CMake) |
+| **Doxygen** | API reference generation from source |
+| **Obsidian** | Project knowledge base and dev log vault |
+| **Claude Code** | AI-assisted development and note generation |
+| **CMake 3.25+** | Build system |
+| **vcpkg** | Dependency management (manifest mode) |
 
 ---
 
 ## Getting Started
 
-Tested on **Arch Linux** and **Windows (DMU lab machines)**. Requires a Vulkan 1.3-capable GPU and a C++20 toolchain.
+Requires a **Vulkan 1.3-capable GPU**, a C++20 toolchain, and CMake 3.25+. Tested on Arch Linux and Windows (DMU lab machines).
 
 ### Clone
 
@@ -89,306 +230,182 @@ cd FYP-Vulkan-Renderer
 ### Linux (Arch — home machine)
 
 ```bash
-sudo pacman -S vulkan-radeon vulkan-validation-layers cmake ninja git base-devel \
-               autoconf autoconf-archive automake libtool
+# Install system dependencies
+sudo pacman -S vulkan-radeon vulkan-validation-layers cmake ninja git \
+               base-devel autoconf autoconf-archive automake libtool
 
+# Bootstrap vcpkg
 git clone https://github.com/microsoft/vcpkg "$HOME/vcpkg"
 "$HOME/vcpkg/bootstrap-vcpkg.sh"
 export VCPKG_ROOT="$HOME/vcpkg"
 
+# Configure, build, run
 cmake --preset linux-debug
 cmake --build --preset linux-debug
-./build/linux-debug/vulkan-renderer
+VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./build/linux-debug/vulkan-renderer
 ```
 
-### Windows (DMU lab PCs — no admin required)
-
-> First-time setup only. vcpkg caches binaries under `%LOCALAPPDATA%\vcpkg\archives` so subsequent builds on the same machine are much faster.
+### Windows (DMU lab — no admin required)
 
 ```bat
+rem Bootstrap vcpkg (user-local, no admin needed)
 git clone https://github.com/microsoft/vcpkg %USERPROFILE%\vcpkg
 %USERPROFILE%\vcpkg\bootstrap-vcpkg.bat
 set VCPKG_ROOT=%USERPROFILE%\vcpkg
 
-cd %USERPROFILE%\Documents
-git clone https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer.git
-cd FYP-Vulkan-Renderer
-
 cmake --preset uni-debug
 cmake --build --preset uni-debug
+build\uni-debug\vulkan-renderer.exe
 ```
+
+> vcpkg caches compiled binaries under `%LOCALAPPDATA%\vcpkg\archives`. Subsequent builds on the same machine are significantly faster.
 
 ---
 
 ## CMake Presets
 
-| Preset | Platform | Generator | Config |
-|--------|----------|-----------|--------|
-| `linux-debug` | Arch Linux | Ninja | Debug |
-| `linux-release` | Arch Linux | Ninja | Release |
-| `uni-debug` | Windows (DMU) | Visual Studio 17 2022 | Debug |
-| `uni-release` | Windows (DMU) | Visual Studio 17 2022 | Release |
+| Preset | Platform | Generator | Config | ASan + UBSan |
+|--------|----------|-----------|--------|--------------|
+| `linux-debug` | Arch Linux | Ninja | Debug | ✅ Enabled |
+| `linux-release` | Arch Linux | Ninja | Release | ❌ |
+| `uni-debug` | Windows (DMU) | Visual Studio 17 2022 | Debug | ✅ Enabled |
+| `uni-release` | Windows (DMU) | Visual Studio 17 2022 | Release | ❌ |
 
 ---
 
 ## API Documentation (Doxygen)
 
-API docs are generated by [Doxygen](https://www.doxygen.nl/) from the source and headers. The generated HTML is **not committed** — it is always built locally on demand.
+All public APIs carry Doxygen Javadoc-style headers (`@file`, `@brief`, `@param`, `@return`, `@note`). The generated HTML reference is built on demand and is **not committed** to the repository.
 
-### Prerequisites
+### Build
 
-Install Doxygen and Graphviz (for call graphs):
-
-**Linux (Arch — home machine):**
 ```bash
-sudo pacman -S doxygen graphviz
-```
-
-**Windows (DMU lab — no admin required):**
-```bat
-:: Doxygen and Graphviz installers can be run from a user account.
-:: Download from https://www.doxygen.nl/download.html
-:: and https://graphviz.org/download/ then add both to your PATH.
-```
-
-### Build the docs
-
-After configuring your preset once, generate the docs with:
-
-**Linux (home machine):**
-```bash
+# Linux
 cmake --build --preset linux-debug --target docs
-```
-
-**Windows (DMU lab):**
-```bat
-cmake --build --preset uni-debug --target docs
-```
-
-This runs Doxygen against `docs/Doxyfile` and outputs HTML to:
-
-```
-docs/doxygen/html/index.html
-```
-
-### View the docs
-
-**Linux — open directly in browser:**
-```bash
 xdg-open docs/doxygen/html/index.html
-```
 
-**Linux — serve locally (enables full search):**
-```bash
-cd docs/doxygen/html
-python3 -m http.server 8080
-# Then open http://localhost:8080 in your browser
-```
-
-**Windows — open directly:**
-```bat
+# Windows
+cmake --build --preset uni-debug --target docs
 start docs\doxygen\html\index.html
 ```
 
-> **Note:** The `docs/doxygen/` folder is listed in `.gitignore` and will never be pushed. Always regenerate locally using the commands above.
+### Prerequisites
+
+```bash
+# Linux (Arch)
+sudo pacman -S doxygen graphviz
+
+# Windows — download from doxygen.nl and graphviz.org, add both to PATH
+```
+
+> The `docs/doxygen/` directory is gitignored. Always regenerate locally. Output is at `docs/doxygen/html/index.html`.
 
 ---
 
 ## Project Layout
 
-```text
+```
 FYP-Vulkan-Renderer/
+├── CLAUDE.md                        # Claude Code project specification
 ├── CMakeLists.txt
 ├── CMakePresets.json
-├── vcpkg.json                   # dependency manifest
-├── vcpkg-configuration.json     # pinned vcpkg baseline
+├── vcpkg.json                       # vcpkg dependency manifest
+├── vcpkg-configuration.json
+│
 ├── src/
 │   ├── main.cpp
-│   ├── VulkanContext.cpp/.h     # vk-bootstrap init, instance, device, queues
-│   ├── SwapChain.cpp/.h         # swapchain, image views, resize logic
-│   ├── Pipeline.cpp/.h          # dynamic rendering pipeline builder
-│   ├── Mesh.cpp/.h              # vertex/index buffers, OBJ loading
-│   ├── Material.cpp/.h          # PBR parameters, descriptor sets
-│   ├── GaussianSplat.cpp/.h     # (M6 stretch) .ply loader, splat buffers
-│   └── Renderer.cpp/.h          # per-frame command recording
+│   ├── VulkanContext.cpp/.h         # Instance, device, queues (vk-bootstrap)
+│   ├── SwapChain.cpp/.h             # Swapchain, image views, resize
+│   ├── Pipeline.cpp/.h             # SPIR-V loading, Dynamic Rendering pipeline
+│   ├── Renderer.cpp/.h             # Per-frame command recording + present
+│   ├── Mesh.cpp/.h                 # Vertex/index buffers (VMA)
+│   ├── Material.cpp/.h             # PBR UBO, descriptor sets, textures
+│   └── GaussianSplat.cpp/.h        # M6 — .ply loader, GPU splat buffers
+│
 ├── shaders/
-│   ├── triangle.vert            # M1 baseline
-│   ├── triangle.frag
-│   ├── mesh.vert                # M2–M3 geometry + UVs
-│   ├── pbr.frag                 # M4 Cook–Torrance BRDF
-│   ├── splat.vert               # M6 Gaussian splat projection
-│   └── splat.frag               # M6 alpha compositing
+│   ├── triangle.vert / .frag       # M1 baseline
+│   ├── mesh.vert                   # M2–M3 geometry + UVs
+│   ├── pbr.frag                    # M4 Cook–Torrance BRDF
+│   ├── splat.vert / .frag          # M6 Gaussian projection + compositing
+│   └── *.spv                       # compiled SPIR-V (gitignored — built by CMake)
+│
 ├── assets/
-│   ├── models/                  # OBJ + texture assets
-│   └── splats/                  # .ply Gaussian splat scenes
+│   ├── models/                     # OBJ meshes + textures (M3)
+│   └── splats/                     # .ply Gaussian splat files (M6)
+│
 ├── docs/
-│   ├── Doxyfile                 # Doxygen config
-│   ├── doxygen/                 # generated output (gitignored — build locally)
-│   └── Dev-Log/                 # daily dev log entries
-└── third_party/
+│   ├── Doxyfile                    # Doxygen configuration
+│   ├── doxygen/                    # Generated HTML reference (gitignored)
+│   └── FYP-Vault/                  # Obsidian knowledge vault
+│       ├── Home.md                 # Vault homepage
+│       ├── 00-Inbox/               # Unprocessed notes
+│       ├── 01-Plans/               # Implementation plans
+│       ├── 02-Dev-Log/             # Daily development logs
+│       ├── 03-Learnings/           # Vulkan concept notes
+│       ├── 04-Archive/             # Completed milestones
+│       ├── Research/               # Gaussian splatting, PBR, neural rendering
+│       └── Canvas/                 # Visual planning boards
+│
+└── .claude/
+    └── skills/                     # Obsidian Skills for Claude Code
+        ├── obsidian-markdown/
+        ├── obsidian-bases/
+        └── json-canvas/
 ```
-
----
-
-## Architecture
-
-- **Dynamic Rendering only** — `vkCmdBeginRendering` / `vkCmdEndRendering` throughout. Zero `VkRenderPass` or `VkFramebuffer` objects.
-- **vk-bootstrap initialisation** — handles instance, physical device selection, logical device, and swapchain. Fully documented in the technical report (§2 Architecture, §7 Reflection).
-- **Explicit synchronisation** — all image layout transitions via `VkImageMemoryBarrier2` and `synchronization2`. No hidden transitions, no guesswork.
-- **VMA memory model** — all GPU allocations (vertex, index, uniform, texture, depth, splat buffers) go through Vulkan Memory Allocator.
-- **RAII C++20** — Vulkan handles wrapped in RAII types throughout. Lifetime and ownership are explicit.
-- **ImGui as a first-class tool** — composited via a second dynamic rendering pass with `VK_ATTACHMENT_LOAD_OP_LOAD`.
-
----
-
-## MoSCoW Prioritisation
-
-### 🔴 Must Have
-- M1: Vulkan 1.3 environment via vk-bootstrap, triangle via Dynamic Rendering
-- M2: Rotating 3D cube — vertex/index buffers, VMA depth image, MVP UBO
-- RAII C++20 codebase with zero validation errors
-- Reproducible CMake + vcpkg build on Linux and Windows
-- Public GitHub with sustained commit history
-- Technical report §1–§3 (Introduction, Architecture, Pipeline)
-
-### 🟡 Should Have
-- M3: OBJ mesh loading + texture mapping with mipmaps (`tinyobjloader`, `synchronization2`)
-- Dear ImGui runtime parameter panel
-- Interactive orbit / FPS camera
-- Swapchain resize via vk-bootstrap swapchain builder
-- Technical report §4–§8 (all 8 sections complete)
-
-### 🟢 Could Have
-- **M4: PBR shading** — Cook–Torrance BRDF (GGX NDF, Smith G, Schlick Fresnel), metallic/roughness, Blender Cycles reference
-- **M6: Gaussian splatting** — `.ply` splat loader, GPU splat buffers via VMA, depth sort, screen-space ellipse projection, alpha compositing
-- RenderDoc performance captures per milestone
-- Per-milestone evidence packages with annotated screenshots
-
-### ⬜ Won't Have
-This is a **renderer**, not a game engine. The following are deliberately out of scope:
-- Physics simulation or collision detection
-- Entity Component System (ECS) or scene graph
-- Audio system
-- Shadow mapping or deferred shading
-- Skeletal animation or skinning
-- Mobile / OpenGL / DirectX support
-- NeRF training or any ML inference pipeline
-- `VK_KHR_ray_tracing_pipeline` (architecturally ready, but not implemented this project)
-- Multi-GPU or multi-queue parallelism
-
----
-
-## Roadmap
-
-| Milestone | Description | Priority | Target | Status |
-|----------|-------------|----------|--------|--------|
-| **M1** | Baseline Vulkan pipeline + triangle | 🔴 Must | Wk 2 — 13 Apr | ⏳ Pending |
-| **M2** | Rotating 3D cube | 🔴 Must | Wk 3 — 20 Apr | ⏳ Pending |
-| **M3** | OBJ loading + texture mapping | 🟡 Should | Wk 5 — 4 May | ⏳ Pending |
-| **M4** | PBR shading (Cook–Torrance BRDF) | 🟢 Could | Wk 7 — 18 May | ⏳ Pending |
-| **M5** | Renderer polish + technical report | 🔴 Must | Wk 9 — 1 Jun | ⏳ Pending |
-| **M6** | Gaussian splatting (`.ply` → GPU) | 🟢 Could | Post M3, if time | ⏳ Stretch |
-
-> M6 is only started after M3 sign-off. M4 and M6 are independent — either can be pursued first depending on progress.
-
----
-
-## Milestone Details
-
-**M1 — Baseline Vulkan Pipeline**  
-vk-bootstrap handles instance + device + swapchain. All rendering code from the first `vkCmd*` call is written directly against the Vulkan API: SPIR-V shader pipeline, `vkCmdBeginRendering` / `vkCmdEndRendering`, manual image layout transitions via pipeline barriers. Output: a coloured triangle.
-
-**M2 — Rotating 3D Cube**  
-Staging-buffer-backed vertex and index buffers, VMA-managed depth image attached dynamically, MVP matrix pushed per-frame via UBO + descriptor set. Output: a rotating cube with correct depth ordering and perspective.
-
-**M3 — OBJ + Texture Mapping**  
-`tinyobjloader` mesh loading, combined image sampler bound to the fragment shader, explicit layout transitions via `synchronization2`, mipmap chain generated via `vkCmdBlitImage`. Output: a textured 3D model from disk.
-
-**M4 — PBR Shading** *(Could Have)*  
-Cook–Torrance specular BRDF: GGX NDF, Smith geometry masking-shadowing, Schlick Fresnel. Lambertian diffuse is the minimum acceptable outcome. Metallic and roughness parameters tweakable live via ImGui, with Blender Cycles used as a visual reference.
-
-**M5 — Polish + Report**  
-Interactive camera, robust swapchain resize, zero validation errors on startup/shutdown, clean GitHub history, reproducible build. Technical report: 8 mandatory sections.
-
-**M6 — Gaussian Splatting** *(Could Have / Stretch)*  
-`.ply` file parser populating per-splat GPU buffers (position, covariance, opacity, SH colour) via VMA. Depth sort pass (CPU radix or GPU compute). Vertex shader projects 3D Gaussians to screen-space ellipses. Fragment shader accumulates splats via alpha compositing in a dedicated dynamic rendering pass. Output: real-time Gaussian splat scene rendered from a `.ply` file.
 
 ---
 
 ## Technical Report
 
-The report is a **core assessed deliverable**, equal weight to the renderer.
+The report is a **core assessed deliverable**, weighted equally alongside the renderer artefact.
 
-| Section | Topic | Status |
-|---------|-------|--------|
-| §1 | Introduction & Motivation | ⏳ |
-| §2 | Architecture (incl. vk-bootstrap analysis) | ⏳ |
-| §3 | Pipeline Deep-Dive | ⏳ |
-| §4 | Shading & Lighting Model | ⏳ |
-| §5 | Challenges & Solutions *(running log)* | ⏳ |
-| §6 | Performance Analysis (RenderDoc) | ⏳ |
-| §7 | Critical Reflection (incl. vk-bootstrap trade-offs) | ⏳ |
-| §8 | Conclusion & Future Work | ⏳ |
+| Section | Topic | Primary Source |
+|---------|-------|----------------|
+| §1 | Introduction & Motivation | [`02-Dev-Log/2026-03-28`](docs/FYP-Vault/02-Dev-Log/2026-03-28.md) |
+| §2 | Architecture Overview | [`CLAUDE.md`](CLAUDE.md) + dev logs |
+| §3 | Pipeline Deep-Dive | Code + Doxygen reference |
+| §4 | Shading & Lighting Model | [`Research/PBR-Shading`](docs/FYP-Vault/Research/PBR-Shading.md) |
+| §5 | Challenges & Solutions | [`02-Dev-Log/`](docs/FYP-Vault/02-Dev-Log/) — running log |
+| §6 | Performance Analysis | RenderDoc captures (from M2) |
+| §7 | Critical Reflection | [`02-Dev-Log/`](docs/FYP-Vault/02-Dev-Log/) — architecture decisions |
+| §8 | Conclusion & Future Work | [`Research/Gaussian-Splatting`](docs/FYP-Vault/Research/Gaussian-Splatting.md) |
 
-§5 is maintained as a running log throughout development — 15 minutes after each session noting any errors hit and how they were fixed.
+Section §5 is maintained as a running log throughout development — 15 minutes after each session recording any validation errors encountered and how they were resolved.
 
 ---
 
-## Dev Log
+## Development Log
 
-A daily record of what I built, what broke, and what I learned. Each entry is a standalone markdown file in [`docs/Dev-Log/`](docs/Dev-Log/).
+A daily record maintained in [`docs/FYP-Vault/02-Dev-Log/`](docs/FYP-Vault/02-Dev-Log/). Each entry captures session metadata, validation layer output, bugs encountered, architecture decisions, and a direct cross-reference to the relevant report sections.
 
-| # | Date | Week | Topic | Entry |
+| # | Date | Week | Focus | Entry |
 |---|------|------|-------|-------|
-| 1 | 28 Mar 2026 | Week 1 · Day 1 | Project setup — documentation, MoSCoW, repo structure | [→ Read](docs/Dev-Log/2026-03-28.md) |
-| 2 | 29 Mar 2026 | Week 1 · Day 2 | Doxygen headers on all src/ files; VulkanContext init() planning | [→ Read](docs/Dev-Log/2026-03-29.md) |
-| 3 | 30 Mar 2026 | Week 1 · Day 3 | CMakeLists fix, VulkanContext plan, M1 concept learning | [→ Read](docs/Dev-Log/2026-03-30.md) |
+| 1 | 28 Mar 2026 | Wk 1 · Day 1 | Project setup — MoSCoW, risk register, repo structure | [→](docs/FYP-Vault/02-Dev-Log/2026-03-28.md) |
+| 2 | 29 Mar 2026 | Wk 1 · Day 2 | Doxygen headers across all `src/`; VulkanContext planning | [→](docs/FYP-Vault/02-Dev-Log/2026-03-29.md) |
+| 3 | 30 Mar 2026 | Wk 1 · Day 3 | CMakeLists fix; VulkanContext plan; M1 concept learning | [→](docs/FYP-Vault/02-Dev-Log/2026-03-30.md) |
 
-> New entries are added after every development session. The log feeds directly into Report §5 (Challenges & Solutions).
-
----
-
-## Learnings
-
-Concept notes written before each milestone to understand the "why" before writing code. Each entry is a standalone markdown file in [`docs/Learnings/`](docs/Learnings/).
-
-| # | Milestone | Topic | Entry |
-|---|-----------|-------|-------|
-| 1 | M1 | Vulkan object chain — instance, device, queues, swapchain, pipeline, command buffers, synchronisation | [→ Read](docs/Learnings/Learnings1.md) |
-
----
-
-## Plans
-
-Implementation plans written before coding begins. Each entry is a standalone markdown file in [`docs/Plan/`](docs/Plan/).
-
-| # | Date | Milestone | Topic | Entry |
-|---|------|-----------|-------|-------|
-| 1 | 30 Mar 2026 | M1 | VulkanContext — instance, device, queues via vk-bootstrap | [→ Read](docs/Plan/Week%201%20Day%203%20Plan.md) |
-
----
-
-## Validation
-
-Validation layers stay **on** for the entire project. Clean startup and shutdown with zero errors is a hard requirement at every milestone.
-
-```bash
-VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./build/linux-debug/vulkan-renderer
-```
+> Dev logs are generated per session via `/devlog` in Claude Code and feed directly into Report §5 (Challenges & Solutions) and §7 (Critical Reflection).
 
 ---
 
 ## Academic Context
 
-Submitted as part of BSc (Hons) Games Production at De Montfort University. All work is my own, completed under the supervision of **Salim Hashu** and **Dr Conor Fahy**. Intended for educational and research use, and conceived as a pilot for planned PhD research in neural rendering at DMU.
+Submitted as the Final Year Project for BSc (Hons) Games Production at **De Montfort University, Leicester**. All work is original, completed under the supervision of **Salim Hashu** and **Dr Conor Fahy**.
 
-Questions or interest in the architecture / future work:  
-**Email:** [mdeeq0@me.com](mailto:mdeeq0@me.com)
+This project is conceived as a foundation for planned **PhD research in neural rendering at De Montfort University** (commencing October 2026), with particular focus on differentiable rendering, 3D Gaussian Splatting, and GPU-accelerated synthetic data generation for machine learning pipelines.
+
+**Contact:** [mdeeq0@me.com](mailto:mdeeq0@me.com)
 
 ---
 
 <div align="center">
 
-*Vulkan 1.3 Dynamic Rendering · vk-bootstrap · No `VkRenderPass`. No `VkFramebuffer`. Ever.*
+<br />
+
+*Vulkan 1.3 Dynamic Rendering · C++20 RAII · Obsidian Knowledge Vault · Doxygen API Reference*
+
+*No `VkRenderPass`. No `VkFramebuffer`. Ever.*
+
+<br />
 
 </div>

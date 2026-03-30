@@ -1,18 +1,32 @@
-# Build output — all CMake preset build dirs
+# ============================================================
+# Build output
+# ============================================================
 build/
 install/
 
-# Doxygen generated output — rebuilt with: cmake --build --preset <preset> --target docs
-docs/doxygen/
-
-# Compiled shaders — source is committed, binaries are not
+# ============================================================
+# Compiled shaders — source committed, binaries rebuilt by CMake
+# ============================================================
 shaders/*.spv
 
-# vcpkg installed packages — reproduced from vcpkg.json on configure
+# ============================================================
+# Doxygen — generated HTML rebuilt with: cmake --build --target docs
+# ============================================================
+docs/doxygen/
+
+# ============================================================
+# vcpkg — packages reproduced from vcpkg.json on configure
+# ============================================================
 vcpkg_installed/
 
+# ============================================================
 # Obsidian vault config — local plugin/theme state, not project content
+# ============================================================
 docs/FYP-Vault/.obsidian/
+
+# ============================================================
+# IDE and editor
+# ============================================================
 
 # CLion
 .idea/
@@ -25,9 +39,13 @@ docs/FYP-Vault/.obsidian/
 # VS Code
 .vscode/
 
+# ============================================================
 # OS
+# ============================================================
 .DS_Store
 Thumbs.db
 
-# compile_commands.json (optional — some prefer to commit this for clangd)
+# ============================================================
+# Optional — uncomment to commit compile_commands.json for clangd
+# ============================================================
 # compile_commands.json
