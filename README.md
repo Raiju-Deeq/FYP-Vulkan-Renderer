@@ -97,7 +97,7 @@ build\uni-debug\vulkan-renderer.exe
 
 ### UML Class Diagram
 
-![UML Class Diagram](docs/FYP-Vault/Images/UML-Class-Diagram.png)
+![UML Class Diagram](docs/FYP-Vault/Images/fyp-vulkan-uml.png)
 
 ### Project Structure
 

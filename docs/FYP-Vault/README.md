@@ -51,7 +51,7 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 ### UML Class Diagram
 
-![UML Class Diagram](Images/UML-Class-Diagram.png)
+![UML Class Diagram](Images/fyp-vulkan-uml.png)
 
 ### Module Responsibilities
 
