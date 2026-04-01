@@ -119,6 +119,7 @@ FYP-Vulkan-Renderer/
 ```
 
 All public APIs have Doxygen `///` documentation. Generate locally:
+e.g., generating on my Linux syste,m I use the following command
 
 ```bash
 cmake --build --preset linux-debug --target docs
