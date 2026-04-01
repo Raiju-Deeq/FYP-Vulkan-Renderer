@@ -49,6 +49,12 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 ## Architecture
 
+### UML Class Diagram
+
+![UML Class Diagram](Images/UML-Class-Diagram.png)
+
+### Module Responsibilities
+
 | Module | Role |
 |--------|------|
 | `VulkanContext` | Instance, physical/logical device, graphics queue (via vk-bootstrap) |
