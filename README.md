@@ -19,6 +19,20 @@ and as a foundation for PhD research in neural rendering (starting October 2026)
 
 ---
 
+## Academic Context
+
+**Programme:** BSc (Hons) Games Production, De Montfort University, Leicester
+**Author:** Mohamed Deeq Mohamed (P2884884)
+**Supervisors:** Salim Hashu, Dr Conor Fahy
+**PhD:** Neural Rendering at DMU, starting October 2026
+
+The Gaussian Splatting milestone (M6) is a deliberate pilot for the PhD, bridging
+real-time Vulkan rendering with neural radiance field representations.
+
+Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/Home.md).
+
+---
+
 ## Features
 
 > **Note:** This project is under active development. Features are listed by milestone.
@@ -160,21 +174,7 @@ All managed via **vcpkg manifest mode** — no manual installation beyond vcpkg 
 - **VMA for all GPU memory** — no direct `vkAllocateMemory`.
 - **Validation layers always on** — zero errors on startup, runtime, and shutdown.
 - **Doxygen `///` on all public APIs** — `@file`, `@brief`, `@param`, `@return`, `@note`.
-
----
-
-## Academic Context
-
-**Programme:** BSc (Hons) Games Production, De Montfort University, Leicester
-**Author:** Mohamed Deeq Mohamed (P2884884)
-**Supervisors:** Salim Hashu, Dr Conor Fahy
-**PhD:** Neural Rendering at DMU, starting October 2026
-
-The Gaussian Splatting milestone (M6) is a deliberate pilot for the PhD, bridging
-real-time Vulkan rendering with neural radiance field representations.
-
-Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/Home.md).
-
+- 
 ---
 
 ## References
