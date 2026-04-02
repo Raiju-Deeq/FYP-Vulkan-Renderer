@@ -1,13 +1,13 @@
 /**
  * @file VulkanContext.cpp
- * @brief Implementation of VulkanContext — Vulkan instance, device and queue setup.
+ * @brief Implementation of VulkanContext: Vulkan instance, device and queue setup.
  *
  * This is the foundational module of the renderer. Every other module (SwapChain,
  * Pipeline, Renderer, Mesh, Material) depends on the handles created here.
  *
  * The init() function follows a strict 5-stage sequence using vk-bootstrap to
  * handle the boilerplate of Vulkan initialisation. Each stage depends on the
- * one before it — the order cannot be changed.
+ * one before it, so the order cannot be changed.
  *
  * The destroy() function tears everything down in the exact reverse order,
  * which is a hard requirement of the Vulkan spec (child objects must be
@@ -22,9 +22,9 @@
 
 #include "VulkanContext.h"
 
-#include <VkBootstrap.h>   // vk-bootstrap — handles instance, device and queue creation
-#include <GLFW/glfw3.h>    // GLFW — only used here for glfwCreateWindowSurface()
-#include <spdlog/spdlog.h> // spdlog — structured logging (replaces std::cout)
+#include <VkBootstrap.h>   // vk-bootstrap: handles instance, device and queue creation
+#include <GLFW/glfw3.h>    // GLFW: only used here for glfwCreateWindowSurface()
+#include <spdlog/spdlog.h> // spdlog: structured logging (replaces std::cout)
 
 /// @details
 /// Initialisation follows 5 sequential stages, each building on the last:
@@ -51,7 +51,7 @@ bool VulkanContext::init(GLFWwindow* window)
         .use_default_debug_messenger()
         .build();
 
-    // vk-bootstrap returns a Result type — if it converted to false,
+    // vk-bootstrap returns a Result type. If it converted to false,
     // something went wrong (e.g. Vulkan 1.3 not supported on this machine).
     if (!instResult) {
         spdlog::error("Failed to create Vulkan instance: {}", instResult.error().message());
@@ -69,7 +69,7 @@ bool VulkanContext::init(GLFWwindow* window)
     // the hood this calls the platform-specific function (vkCreateXlibSurfaceKHR
     // on my Arch machine, vkCreateWin32SurfaceKHR on the DMU lab PCs).
     //
-    // This MUST happen before physical device selection — vk-bootstrap needs
+    // This MUST happen before physical device selection. vk-bootstrap needs
     // the surface to verify the chosen GPU can actually present to my window.
     if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) != VK_SUCCESS) {
         spdlog::error("Failed to create window surface");
@@ -82,7 +82,7 @@ bool VulkanContext::init(GLFWwindow* window)
     // these requirements. The features live in two separate structs because
     // they were promoted to core in different Vulkan versions (1.2 and 1.3).
 
-    // Vulkan 1.3 features — these are the core of my renderer's architecture:
+    // Vulkan 1.3 features (the core of my renderer's architecture):
     //   dynamicRendering: lets me describe render attachments inline instead
     //                     of pre-baking VkRenderPass objects (the modern approach)
     //   synchronization2: cleaner barrier API for image layout transitions
@@ -127,7 +127,7 @@ bool VulkanContext::init(GLFWwindow* window)
     // through this device handle.
     //
     // DeviceBuilder reads the features I required in Stage 3 and
-    // automatically enables them — I don't need to re-specify anything.
+    // automatically enables them, so I don't need to re-specify anything.
     // It also enables VK_KHR_swapchain since I provided a surface.
     vkb::DeviceBuilder deviceBuilder(vkbPhysicalDevice);
     auto devResult = deviceBuilder.build();
@@ -167,31 +167,31 @@ bool VulkanContext::init(GLFWwindow* window)
 /// Each handle is guarded with a VK_NULL_HANDLE check so this function
 /// is safe to call even if init() failed partway through or was never called.
 ///
-/// VkPhysicalDevice and VkQueue are NOT destroyed here — they are not owned
+/// VkPhysicalDevice and VkQueue are NOT destroyed here. They are not owned
 /// handles. They are just references retrieved from the driver and become
 /// invalid automatically when the instance/device they belong to is destroyed.
 void VulkanContext::destroy()
 {
-    // 1. Logical device — must go first, before the instance it was created from.
+    // 1. Logical device: must go first, before the instance it was created from.
     if (m_device != VK_NULL_HANDLE) {
         vkDestroyDevice(m_device, nullptr);
         m_device = VK_NULL_HANDLE;
     }
 
-    // 2. Surface — owned by the instance, must be destroyed before the instance.
+    // 2. Surface: owned by the instance, must be destroyed before the instance.
     if (m_surface != VK_NULL_HANDLE) {
         vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
         m_surface = VK_NULL_HANDLE;
     }
 
-    // 3. Debug messenger — also owned by the instance. I use vk-bootstrap's
+    // 3. Debug messenger: also owned by the instance. I use vk-bootstrap's
     //    helper instead of manually loading the destroy function pointer.
     if (m_debugMessenger != VK_NULL_HANDLE) {
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         m_debugMessenger = VK_NULL_HANDLE;
     }
 
-    // 4. Instance — last to go, everything above depended on it.
+    // 4. Instance: last to go, everything above depended on it.
     if (m_instance != VK_NULL_HANDLE) {
         vkDestroyInstance(m_instance, nullptr);
         m_instance = VK_NULL_HANDLE;
