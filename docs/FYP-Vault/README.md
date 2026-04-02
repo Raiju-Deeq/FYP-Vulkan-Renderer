@@ -1,8 +1,8 @@
-# FYP — Vulkan Renderer in C++20
+# FYP - Vulkan Renderer in C++20
 
 **Mohamed Deeq Mohamed · P2884884 · De Montfort University · 2025–2026**
 
-> A real-time Vulkan 1.3 renderer built from scratch in C++20, targeting Dynamic Rendering, explicit synchronisation, and physically based shading — with a stretch goal of 3D Gaussian Splatting (M6) to bridge into PhD research in neural rendering.
+> A real-time Vulkan 1.3 renderer built from scratch in C++20, targeting Dynamic Rendering, explicit synchronisation, and physically based shading - with a stretch goal of 3D Gaussian Splatting (M6) to bridge into PhD research in neural rendering.
 
 > Open this folder as your Obsidian vault: `File → Open vault → docs/FYP-Vault/`
 
@@ -26,7 +26,7 @@
 
 This project implements a Vulkan renderer that demonstrates mastery of modern GPU programming concepts at the lowest practical abstraction level. The renderer deliberately avoids legacy Vulkan patterns (`VkRenderPass`, `VkFramebuffer`) in favour of Vulkan 1.3 core features: **Dynamic Rendering**, **synchronization2**, and **VMA** for all GPU memory.
 
-The project is scoped as a renderer, not an engine — no physics, ECS, audio, or scripting. The architectural focus is correctness, explicitness, and reproducibility.
+The project is scoped as a renderer, not an engine - no physics, ECS, audio, or scripting. The architectural focus is correctness, explicitness, and reproducibility.
 
 **Repository:** [FYP-Vulkan-Renderer on GitHub](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer)
 
@@ -36,11 +36,11 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 | Milestone | Description | Priority | Target Week | Status |
 |-----------|-------------|----------|-------------|--------|
-| M1 | Baseline pipeline + triangle (Dynamic Rendering) | Must | Wk 2 — 13 Apr | In Progress |
-| M2 | Rotating 3D cube (UBO + depth buffer) | Must | Wk 3 — 20 Apr | Pending |
-| M3 | OBJ loading + textures + Dear ImGui | Should | Wk 5 — 4 May | Pending |
-| M4 | PBR shading (Cook–Torrance BRDF) | Could | Wk 7 — 18 May | Pending |
-| M5 | Polish + full 8-section report | Must | Wk 9 — 1 Jun | Pending |
+| M1 | Baseline pipeline + triangle (Dynamic Rendering) | Must | Wk 2 - 13 Apr | In Progress |
+| M2 | Rotating 3D cube (UBO + depth buffer) | Must | Wk 3 - 20 Apr | Pending |
+| M3 | OBJ loading + textures + Dear ImGui | Should | Wk 5 - 4 May | Pending |
+| M4 | PBR shading (Cook–Torrance BRDF) | Could | Wk 7 - 18 May | Pending |
+| M5 | Polish + full 8-section report | Must | Wk 9 - 1 Jun | Pending |
 | M6 | 3D Gaussian Splatting (.ply render) | Could | Post-M3 | Stretch |
 
 > M6 is hard-gated behind M3 sign-off and cannot begin until then.
@@ -67,11 +67,11 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 ### Key Design Decisions
 
-- **Dynamic Rendering only** — no `VkRenderPass`, no `VkFramebuffer`. Uses `vkCmdBeginRendering`/`vkCmdEndRendering` (Vulkan 1.3 core).
-- **Explicit synchronisation** — all image layout transitions use `VkImageMemoryBarrier2` + `synchronization2`. No hidden state.
-- **Double-buffered** — `MAX_FRAMES_IN_FLIGHT = 2`; per-frame semaphores + fences throttle CPU ahead of GPU.
-- **VMA for all GPU memory** — no direct `vkAllocateMemory` calls anywhere.
-- **vk-bootstrap** — handles instance/device/swapchain boilerplate.
+- **Dynamic Rendering only** - no `VkRenderPass`, no `VkFramebuffer`. Uses `vkCmdBeginRendering`/`vkCmdEndRendering` (Vulkan 1.3 core).
+- **Explicit synchronisation** - all image layout transitions use `VkImageMemoryBarrier2` + `synchronization2`. No hidden state.
+- **Double-buffered** - `MAX_FRAMES_IN_FLIGHT = 2`; per-frame semaphores + fences throttle CPU ahead of GPU.
+- **VMA for all GPU memory** - no direct `vkAllocateMemory` calls anywhere.
+- **vk-bootstrap** - handles instance/device/swapchain boilerplate.
 
 ---
 
@@ -111,9 +111,9 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 ## Won't Have (Intentional Scope Decisions)
 
-- Not a game engine — no physics, ECS, audio, scripting, or editor tooling
+- Not a game engine - no physics, ECS, audio, scripting, or editor tooling
 - No shadow mapping, deferred shading, skeletal animation, or mobile/console support
-- No NeRF training or ML inference — M6 renders pre-trained `.ply` files only
+- No NeRF training or ML inference - M6 renders pre-trained `.ply` files only
 - No `VK_KHR_ray_tracing_pipeline` in this submission (future work / PhD research)
 - No multi-GPU, no Vulkan portability layer, no Android/iOS support
 
@@ -123,7 +123,7 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 
 | Folder | Purpose |
 |--------|---------|
-| `00-Inbox/` | Unprocessed notes — sort weekly |
+| `00-Inbox/` | Unprocessed notes - sort weekly |
 | `01-Plans/` | Milestone roadmaps and daily session plans |
 | `02-Dev-Log/` | Daily development logs (generated via `/devlog`) |
 | `03-Learnings/` | Concept notes and Vulkan deep-dives |
@@ -151,13 +151,13 @@ The project is scoped as a renderer, not an engine — no physics, ECS, audio, o
 | Week | Dates | Focus |
 |------|-------|-------|
 | 1 | 28 Mar – 3 Apr | Setup, documentation, architecture, concept learning |
-| 2 | 6 Apr – 13 Apr | **M1** — Triangle via Dynamic Rendering |
-| 3 | 14 Apr – 20 Apr | **M2** — Rotating cube, UBO, depth buffer |
-| 4–5 | 21 Apr – 4 May | **M3** — OBJ loading, textures, Dear ImGui; begin report |
-| 6–7 | 5 May – 18 May | **M4** — PBR shading (if M3 complete) |
-| 8 | 19 May – 25 May | **M6** — Gaussian splatting (if M3 complete); report writing |
-| 9 | 26 May – 1 Jun | **M5** — Polish, RenderDoc profiling, final report |
+| 2 | 6 Apr – 13 Apr | **M1** - Triangle via Dynamic Rendering |
+| 3 | 14 Apr – 20 Apr | **M2** - Rotating cube, UBO, depth buffer |
+| 4–5 | 21 Apr – 4 May | **M3** - OBJ loading, textures, Dear ImGui; begin report |
+| 6–7 | 5 May – 18 May | **M4** - PBR shading (if M3 complete) |
+| 8 | 19 May – 25 May | **M6** - Gaussian splatting (if M3 complete); report writing |
+| 9 | 26 May – 1 Jun | **M5** - Polish, RenderDoc profiling, final report |
 
 ---
 
-*FYP — Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
+*FYP - Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*

@@ -6,7 +6,7 @@
  * Splatting (Kerbl et al., SIGGRAPH 2023).  Loads a pre-trained .ply
  * splat file, uploads Gaussian attributes (position, covariance, colour,
  * opacity) to a GPU storage buffer, and exposes a draw() method that
- * issues an indirect instanced draw call — one quad instance per Gaussian.
+ * issues an indirect instanced draw call - one quad instance per Gaussian.
  *
  * @note  This is the stretch-goal feature (M6 Could-Have).  The class is
  *        stubbed in Week 1 so the architecture is visible from the outset;

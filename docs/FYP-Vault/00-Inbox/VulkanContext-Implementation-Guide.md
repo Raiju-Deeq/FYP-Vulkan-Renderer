@@ -4,26 +4,26 @@ tags: [vulkan, fyp, milestone-1, vulkan-context, implementation]
 status: in-progress
 ---
 
-# VulkanContext.cpp — Step-by-Step Implementation Guide
+# VulkanContext.cpp - Step-by-Step Implementation Guide
 
-**Milestone:** M1 — Baseline Vulkan Pipeline
+**Milestone:** M1 - Baseline Vulkan Pipeline
 **Prerequisite:** [[Vulkan-Object-Chain]], [[Vulkan-M1-Deep-Dive]]
 **Plan:** [[Week-1-Day-3-Plan]]
-**Goal:** Implement `VulkanContext::init()` and `VulkanContext::destroy()` — the foundation every other module depends on
+**Goal:** Implement `VulkanContext::init()` and `VulkanContext::destroy()` - the foundation every other module depends on
 
 ---
 
 ## Overview
 
-The header (`VulkanContext.h`) is already complete — it defines the class, the private members, and the public API. We only need to implement the `.cpp` file. There are exactly **two functions** to write: `init()` and `destroy()`.
+The header (`VulkanContext.h`) is already complete - it defines the class, the private members, and the public API. We only need to implement the `.cpp` file. There are exactly **two functions** to write: `init()` and `destroy()`.
 
 ---
 
-## How `init()` Works — Stage by Stage
+## How `init()` Works - Stage by Stage
 
 ### Stage 1: Create the VkInstance
 
-This is where the Vulkan loader wakes up. We use vk-bootstrap's `InstanceBuilder` — a builder pattern class that collects our requirements and then calls `vkCreateInstance` for us.
+This is where the Vulkan loader wakes up. We use vk-bootstrap's `InstanceBuilder` - a builder pattern class that collects our requirements and then calls `vkCreateInstance` for us.
 
 **What we tell it:**
 - Our app name (cosmetic, but shows in debug tools like RenderDoc)
@@ -33,7 +33,7 @@ This is where the Vulkan loader wakes up. We use vk-bootstrap's `InstanceBuilder
 
 **What comes back:** A `vkb::Instance` struct containing the raw `VkInstance` handle and the `VkDebugUtilsMessengerEXT` handle. We store both in our member variables.
 
-**What can go wrong:** The system doesn't support Vulkan 1.3 (old drivers). The builder returns an error result — we log it and return false.
+**What can go wrong:** The system doesn't support Vulkan 1.3 (old drivers). The builder returns an error result - we log it and return false.
 
 ### Stage 2: Create the Window Surface
 
@@ -46,24 +46,24 @@ GLFW gives us a one-liner: `glfwCreateWindowSurface(instance, window, nullptr, &
 This is where we tell vk-bootstrap what GPU features we need. It queries every GPU on the system and picks the best match.
 
 **The two feature structs:** Vulkan 1.3 features and 1.2 features live in separate structs:
-- `VkPhysicalDeviceVulkan13Features` — we set `dynamicRendering = VK_TRUE` and `synchronization2 = VK_TRUE`
-- `VkPhysicalDeviceVulkan12Features` — we set `bufferDeviceAddress = VK_TRUE`
+- `VkPhysicalDeviceVulkan13Features` - we set `dynamicRendering = VK_TRUE` and `synchronization2 = VK_TRUE`
+- `VkPhysicalDeviceVulkan12Features` - we set `bufferDeviceAddress = VK_TRUE`
 
 We pass these to the selector via `set_required_features_13()` and `set_required_features_12()`. Any GPU that does not support all three features gets rejected.
 
-We also say `prefer_gpu_device_type(discrete)` — pick a dedicated GPU over integrated if both are available.
+We also say `prefer_gpu_device_type(discrete)` - pick a dedicated GPU over integrated if both are available.
 
 **What comes back:** A `vkb::PhysicalDevice` with the raw `VkPhysicalDevice` handle and the GPU name (which we log).
 
 ### Stage 4: Create the Logical Device
 
-The `DeviceBuilder` takes the physical device from Stage 3 and creates a `VkDevice`. All the features we required during selection are automatically enabled — no extra configuration needed.
+The `DeviceBuilder` takes the physical device from Stage 3 and creates a `VkDevice`. All the features we required during selection are automatically enabled - no extra configuration needed.
 
 **What comes back:** A `vkb::Device` with the raw `VkDevice` handle.
 
 ### Stage 5: Get the Graphics Queue
 
-We ask the `vkb::Device` for a graphics queue and its family index. These are two separate calls — `get_queue()` returns the `VkQueue`, `get_queue_index()` returns the `uint32_t` family index.
+We ask the `vkb::Device` for a graphics queue and its family index. These are two separate calls - `get_queue()` returns the `VkQueue`, `get_queue_index()` returns the `uint32_t` family index.
 
 The Renderer will need both: the queue for submitting commands, the family index for creating the command pool.
 
@@ -78,13 +78,13 @@ Exact reverse of creation order. Each handle is checked against `VK_NULL_HANDLE`
 3. Destroy the debug messenger (Stage 1b reverse)
 4. Destroy the instance (Stage 1a reverse)
 
-`VkPhysicalDevice` and `VkQueue` are never destroyed — they are not owned handles, just references retrieved from the driver.
+`VkPhysicalDevice` and `VkQueue` are never destroyed - they are not owned handles, just references retrieved from the driver.
 
 ---
 
 ## Pseudocode
 
-This maps 1:1 to the real code — the only difference is replacing pseudocode syntax with actual C++ and vk-bootstrap API calls.
+This maps 1:1 to the real code - the only difference is replacing pseudocode syntax with actual C++ and vk-bootstrap API calls.
 
 ### `init()`
 
@@ -234,4 +234,4 @@ FUNCTION destroy():
 
 ---
 
-*FYP — Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
+*FYP - Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*

@@ -1,7 +1,7 @@
 #version 450
-// M1 — Baseline triangle vertex shader
+// M1 - Baseline triangle vertex shader
 // Hardcoded clip-space positions for the initial triangle render.
-// No vertex buffers yet — positions are baked in as a constant array
+// No vertex buffers yet - positions are baked in as a constant array
 // indexed by gl_VertexIndex. Replaced in M2 with a proper vertex buffer.
 
 layout(location = 0) out vec3 fragColor;

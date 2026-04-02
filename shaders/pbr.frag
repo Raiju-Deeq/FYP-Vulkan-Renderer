@@ -1,5 +1,5 @@
 #version 450
-// M4 — Cook-Torrance PBR fragment shader  [COULD HAVE]
+// M4 - Cook-Torrance PBR fragment shader  [COULD HAVE]
 // Implements a physically-based BRDF:
 //   - Lambertian diffuse term
 //   - GGX normal distribution function (NDF)
@@ -9,7 +9,7 @@
 // Material parameters (albedo, metallic, roughness, ao) are supplied
 // via a push constant block and controllable at runtime via Dear ImGui.
 //
-// STATUS: Stub — full implementation in M4 (Week 7)
+// STATUS: Stub - full implementation in M4 (Week 7)
 
 #define PI 3.14159265358979323846
 
@@ -19,7 +19,7 @@ layout(location = 2) in vec3 fragWorldPos;
 
 layout(location = 0) out vec4 outColor;
 
-// Combined image sampler — bound in M3+
+// Combined image sampler - bound in M3+
 layout(set = 0, binding = 1) uniform sampler2D albedoMap;
 
 // PBR material parameters via push constants
@@ -53,7 +53,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 void main() {
-    // Stub output — passes through albedo colour until M4 is implemented.
+    // Stub output - passes through albedo colour until M4 is implemented.
     // Replace this entire main() in M4 with the full Cook-Torrance loop.
     outColor = vec4(pbr.albedo, 1.0);
 }

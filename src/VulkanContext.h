@@ -70,7 +70,7 @@ public:
     void destroy();
 
     // -------------------------------------------------------------------------
-    // Accessors (all return raw handles — caller must not destroy them)
+    // Accessors (all return raw handles - caller must not destroy them)
     // -------------------------------------------------------------------------
 
     /// @brief Returns the Vulkan logical device handle.

@@ -26,7 +26,7 @@ Few works close the loop back to **engine‑native triangle meshes** with physic
 This observation motivates a focus on triangle‑centric neural rendering methods that remain compatible with existing game and film pipelines while still benefiting from differentiable learning.
 ### 1.2 Mind map: "Extending Triangle 3D Models, Materials, and Lighting"
 The mind map places "Extending Triangle 3D Models, Materials, and Lighting" at the center, with branches for core methodology, geometry and topology, materials and texturing, environment lighting, applications, and key advantages.
-Core methodological nodes include inverse rendering with joint optimization and 2D image losses, and differentiable rasterization enabling deferred shading and interactive rates—clearly targeting real‑time or near‑real‑time performance in a rasterization‑style pipeline.[^3]
+Core methodological nodes include inverse rendering with joint optimization and 2D image losses, and differentiable rasterization enabling deferred shading and interactive rates, clearly targeting real‑time or near‑real‑time performance in a rasterization‑style pipeline.[^3]
 Geometry and topology are organized around Deep Marching Tetrahedra (DMTet) for deformable tetrahedral meshes and signed distance fields, as well as explicit triangle mesh representations under unknown topology.
 Materials and texturing emphasize physically based shading (Disney/Cook–Torrance, Lambertian, GGX) and neural texturing techniques (volumetric texturing, MLP or hash‑grid encodings, and 2D texture re‑parameterization).
 Environment lighting nodes cover split‑sum approximations, HDR light probes, and pre‑integrated filtered cubemaps, explicitly flagging differentiable formulations and all‑frequency lighting.
@@ -54,7 +54,7 @@ Existing work on relightable 3D Gaussians, for example, adds BRDF decomposition 
 Traditional differentiable rendering frameworks support mesh‑based inverse rendering but often rely on simplified shading models, limited environment lighting, or offline path tracing that is difficult to bring to real‑time.
 
 On the other side, NeRF and 3D Gaussian splatting have achieved real‑time novel view synthesis but generally lack direct compatibility with triangle‑mesh engines: extracted meshes tend to be noisy, materials are not clean PBR parameter sets, and baked lighting limits relighting or physics‑based simulation.[^2]
-A thesis that demonstrates a practical, differentiable pipeline for reconstructing **clean, engine‑ready assets**—geometry, textures, and lighting—would therefore sit squarely at a junction of unmet needs in both research and practice.
+A thesis that demonstrates a practical, differentiable pipeline for reconstructing **clean, engine‑ready assets**, geometry, textures, and lighting, would therefore sit squarely at a junction of unmet needs in both research and practice.
 ### 2.3 Targeted contributions over a PhD arc
 A plausible multi‑paper trajectory might include:
 
@@ -82,7 +82,7 @@ Design and analyze a differentiable rasterization pipeline that supports a moder
 
 **Why it is novel.**
 Most differentiable renderers either simplify shading (Lambertian, basic Phong) or fall back to Monte Carlo estimators for full path tracing, which are expensive and noisy.[^1]
-A pipeline that keeps the standard real‑time PBR approximations yet remains fully differentiable end‑to‑end—including pre‑integrated BRDF lookup tables and environment map filtering—would fill a methodological gap and directly support real‑time engines.
+A pipeline that keeps the standard real‑time PBR approximations yet remains fully differentiable end‑to‑end, including pre‑integrated BRDF lookup tables and environment map filtering, would fill a methodological gap and directly support real‑time engines.
 
 **Possible research questions.**
 

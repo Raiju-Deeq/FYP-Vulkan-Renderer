@@ -1,6 +1,6 @@
 /**
  * @file Renderer.h
- * @brief Top-level renderer — per-frame record, submit and present loop.
+ * @brief Top-level renderer - per-frame record, submit and present loop.
  *
  * Renderer is the main entry point for the render loop.  It owns the
  * per-frame synchronisation objects (semaphores, fences), the command

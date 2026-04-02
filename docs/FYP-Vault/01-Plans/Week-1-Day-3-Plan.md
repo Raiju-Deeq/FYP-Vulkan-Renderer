@@ -1,30 +1,30 @@
-# Week 1 Day 3 Plan — Implement VulkanContext (Milestone 1, Step 1)
+# Week 1 Day 3 Plan - Implement VulkanContext (Milestone 1, Step 1)
 
 **Date:** 2026-03-30
-**Milestone:** M1 — Baseline Vulkan Pipeline
+**Milestone:** M1 - Baseline Vulkan Pipeline
 **Target:** Implement VulkanContext.cpp (instance, device, queues via vk-bootstrap)
 
 ---
 
 ## Context
 
-All source files are scaffolded stubs from Week 1. VulkanContext is the foundational module — SwapChain, Pipeline, and Renderer all depend on it. We need to implement the Vulkan instance, device, and queue setup using vk-bootstrap before anything else can work.
+All source files are scaffolded stubs from Week 1. VulkanContext is the foundational module - SwapChain, Pipeline, and Renderer all depend on it. We need to implement the Vulkan instance, device, and queue setup using vk-bootstrap before anything else can work.
 
 ---
 
 ## Files to Modify
 
-1. **`src/VulkanContext.cpp`** — implement `init()` and `destroy()` (main work)
-2. **`CMakeLists.txt`** — fix duplicate source file entries (lines 10-32)
+1. **`src/VulkanContext.cpp`** - implement `init()` and `destroy()` (main work)
+2. **`CMakeLists.txt`** - fix duplicate source file entries (lines 10-32)
 
 **Read-only references:**
-- `src/VulkanContext.h` — class interface (already complete, no changes needed)
+- `src/VulkanContext.h` - class interface (already complete, no changes needed)
 
 ---
 
 ## Implementation: `VulkanContext.cpp`
 
-### `init(GLFWwindow* window)` — 5 stages
+### `init(GLFWwindow* window)` - 5 stages
 
 **Stage 1: Create VkInstance** via `vkb::InstanceBuilder`
 - App name: "FYP Vulkan Renderer"
@@ -54,7 +54,7 @@ All source files are scaffolded stubs from Week 1. VulkanContext is the foundati
 
 **Error handling:** Each stage checks the vk-bootstrap Result, logs via `spdlog::error()`, returns `false`. Caller can safely call `destroy()` after any failure since all handles default to VK_NULL_HANDLE.
 
-### `destroy()` — reverse teardown
+### `destroy()` - reverse teardown
 
 1. `vkDestroyDevice(m_device)`
 2. `vkDestroySurfaceKHR(m_instance, m_surface)`
@@ -94,7 +94,7 @@ set(SOURCES
 ## Verification
 
 1. `cmake --preset linux-debug`
-2. `cmake --build --preset linux-debug` — zero errors
+2. `cmake --build --preset linux-debug` - zero errors
 3. Full integration test comes when we wire main.cpp + SwapChain
 
 ---

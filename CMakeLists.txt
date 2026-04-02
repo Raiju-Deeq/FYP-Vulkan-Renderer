@@ -65,7 +65,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # ── GLM configuration ────────────────────────────────────────────────────────
-# GLM_FORCE_DEPTH_ZERO_TO_ONE is critical — Vulkan depth range is [0,1] not [-1,1].
+# GLM_FORCE_DEPTH_ZERO_TO_ONE is critical - Vulkan depth range is [0,1] not [-1,1].
 # Without this your projection matrix will produce wrong depth values.
 target_compile_definitions(vulkan-renderer PRIVATE
         GLM_FORCE_RADIANS
@@ -92,7 +92,7 @@ endif()
 
 # ── SPIR-V shader compilation (glslc) ────────────────────────────────────────
 # Finds glslc from VULKAN_SDK/bin first, then falls back to PATH.
-# If not found, shaders must be compiled manually — the warning tells you the command.
+# If not found, shaders must be compiled manually - the warning tells you the command.
 find_program(GLSLC glslc HINTS
         "$ENV{VULKAN_SDK}/bin"
         "$ENV{VULKAN_SDK}/Bin"
@@ -122,7 +122,7 @@ if(GLSLC)
     add_dependencies(vulkan-renderer shaders)
 else()
     message(WARNING
-            "glslc not found — shaders will NOT be compiled automatically.\n"
+            "glslc not found - shaders will NOT be compiled automatically.\n"
             "Compile manually with:\n"
             "  glslc shaders/triangle.vert -o shaders/triangle.vert.spv\n"
             "  glslc shaders/triangle.frag -o shaders/triangle.frag.spv\n"

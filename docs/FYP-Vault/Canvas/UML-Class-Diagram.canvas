@@ -1,6 +1,6 @@
 {
 	"nodes":[
-		{"id":"a0b1c2d3e4f50001","type":"text","x":200,"y":-100,"width":500,"height":60,"color":"5","text":"## Vulkan Renderer — UML Class Diagram"},
+		{"id":"a0b1c2d3e4f50001","type":"text","x":200,"y":-100,"width":500,"height":60,"color":"5","text":"## Vulkan Renderer - UML Class Diagram"},
 		{"id":"a0b1c2d3e4f50010","type":"group","x":-620,"y":-30,"width":1740,"height":780,"label":"Core Vulkan Infrastructure","color":"6"},
 		{"id":"a0b1c2d3e4f50011","type":"group","x":-620,"y":810,"width":1740,"height":560,"label":"Rendering & Synchronisation","color":"2"},
 		{"id":"a0b1c2d3e4f50012","type":"group","x":-620,"y":1430,"width":1740,"height":940,"label":"Scene Data (Geometry, Materials, Splatting)","color":"4"},

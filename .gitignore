@@ -5,22 +5,22 @@ build/
 install/
 
 # ============================================================
-# Compiled shaders — source committed, binaries rebuilt by CMake
+# Compiled shaders - source committed, binaries rebuilt by CMake
 # ============================================================
 shaders/*.spv
 
 # ============================================================
-# Doxygen — generated HTML rebuilt with: cmake --build --target docs
+# Doxygen - generated HTML rebuilt with: cmake --build --target docs
 # ============================================================
 docs/doxygen/
 
 # ============================================================
-# vcpkg — packages reproduced from vcpkg.json on configure
+# vcpkg - packages reproduced from vcpkg.json on configure
 # ============================================================
 vcpkg_installed/
 
 # ============================================================
-# Obsidian vault config — local plugin/theme/workspace state only
+# Obsidian vault config - local plugin/theme/workspace state only
 # These files change on every Obsidian open and must never be committed
 # Run once to untrack: git rm -r --cached docs/FYP-Vault/.obsidian/
 # ============================================================
@@ -49,6 +49,6 @@ vcpkg_installed/
 Thumbs.db
 
 # ============================================================
-# Optional — uncomment to commit compile_commands.json for clangd
+# Optional - uncomment to commit compile_commands.json for clangd
 # ============================================================
 # compile_commands.json

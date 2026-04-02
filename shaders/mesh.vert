@@ -1,5 +1,5 @@
 #version 450
-// M2/M3 — Geometry + UV vertex shader
+// M2/M3 - Geometry + UV vertex shader
 // Used from M2 (cube) onwards. Receives per-vertex position, normal,
 // and UV coordinates from vertex buffers and transforms them by the
 // MVP matrix delivered via a Uniform Buffer Object (UBO).
@@ -15,7 +15,7 @@ layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 fragWorldPos;
 
-// UBO — set 0, binding 0
+// UBO - set 0, binding 0
 // Will be populated in M2 once descriptor sets are implemented.
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 model;

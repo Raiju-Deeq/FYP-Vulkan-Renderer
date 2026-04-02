@@ -1,7 +1,7 @@
-# Dev Log — Session Template
+# Dev Log - Session Template
 
 > Copy this file, rename it `YYYY-MM-DD.md`, and fill it in at the end of every dev session.
-> These notes feed directly into **Report §5 (Challenges & Solutions)** and **§6 (Performance Analysis)** — write them now, not at the end of the project.
+> These notes feed directly into **Report §5 (Challenges & Solutions)** and **§6 (Performance Analysis)** - write them now, not at the end of the project.
 
 ---
 
@@ -65,8 +65,8 @@
 | Metric | Value |
 |--------|-------|
 | **Capture file** | e.g. `captures/2026-04-06.rdc` |
-| **GPU time — main pass** | ms |
-| **GPU time — ImGui pass** | ms |
+| **GPU time - main pass** | ms |
+| **GPU time - ImGui pass** | ms |
 | **Draw calls** | |
 | **VRAM allocated (VMA)** | MB |
 | **Notable observations** | |
@@ -102,4 +102,4 @@
 
 ---
 
-*FYP — Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
+*FYP - Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*

@@ -1,5 +1,5 @@
 #version 450
-// M1 — Baseline triangle fragment shader
+// M1 - Baseline triangle fragment shader
 // Receives interpolated colour from the vertex shader and outputs
 // it directly to the colour attachment. No lighting, no textures.
 

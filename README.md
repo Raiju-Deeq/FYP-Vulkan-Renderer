@@ -38,12 +38,12 @@ Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/Home.md)
 > **Note:** This project is under active development. Features are listed by milestone.
 > Completed milestones are marked with a checkbox.
 
-- [ ] **M1 — Coloured Triangle** · Dynamic Rendering pipeline, vk-bootstrap init, SPIR-V compilation via CMake, synchronization2 barriers, validation layers clean
-- [ ] **M2 — Rotating 3D Cube** · Vertex/index buffers via VMA, staging uploads, depth image, UBO descriptors, MVP transforms
-- [ ] **M3 — Textured OBJ Mesh** · tinyobjloader, combined image sampler, mipmap generation via `vkCmdBlitImage`, texture layout transitions
-- [ ] **M4 — Renderer Polish** · Interactive camera, swapchain resize, zero validation errors, reproducible cross-platform build, technical report
-- [ ] **M5 — PBR Shading** *(stretch)* · Cook-Torrance BRDF (GGX + Smith + Schlick), Dear ImGui material panel
-- [ ] **M6 — 3D Gaussian Splatting** *(stretch / PhD pilot)* · `.ply` ingestion, GPU storage buffers, depth sorting, ellipse projection, alpha compositing
+- [ ] **M1 - Coloured Triangle** · Dynamic Rendering pipeline, vk-bootstrap init, SPIR-V compilation via CMake, synchronization2 barriers, validation layers clean
+- [ ] **M2 - Rotating 3D Cube** · Vertex/index buffers via VMA, staging uploads, depth image, UBO descriptors, MVP transforms
+- [ ] **M3 - Textured OBJ Mesh** · tinyobjloader, combined image sampler, mipmap generation via `vkCmdBlitImage`, texture layout transitions
+- [ ] **M4 - Renderer Polish** · Interactive camera, swapchain resize, zero validation errors, reproducible cross-platform build, technical report
+- [ ] **M5 - PBR Shading** *(stretch)* · Cook-Torrance BRDF (GGX + Smith + Schlick), Dear ImGui material panel
+- [ ] **M6 - 3D Gaussian Splatting** *(stretch / PhD pilot)* · `.ply` ingestion, GPU storage buffers, depth sorting, ellipse projection, alpha compositing
 
 ---
 
@@ -101,9 +101,9 @@ build\uni-debug\vulkan-renderer.exe
 | Preset | Platform | Config | Sanitizers |
 |---|---|---|---|
 | `linux-debug` | Arch Linux | Debug | ASan + UBSan |
-| `linux-release` | Arch Linux | Release | — |
+| `linux-release` | Arch Linux | Release | - |
 | `uni-debug` | Windows (DMU) | Debug | ASan + UBSan |
-| `uni-release` | Windows (DMU) | Release | — |
+| `uni-release` | Windows (DMU) | Release | - |
 
 ---
 
@@ -149,7 +149,7 @@ cmake --build --preset linux-debug --target docs
 
 ## Dependencies
 
-All managed via **vcpkg manifest mode** — no manual installation beyond vcpkg itself.
+All managed via **vcpkg manifest mode** - no manual installation beyond vcpkg itself.
 
 | Library | Purpose |
 |---|---|
@@ -168,12 +168,12 @@ All managed via **vcpkg manifest mode** — no manual installation beyond vcpkg 
 
 ## Coding Standards
 
-- **RAII C++20** — Vulkan handles wrapped in classes with destructors. No raw `new`/`delete`.
-- **Dynamic Rendering only** — `vkCmdBeginRendering` / `vkCmdEndRendering`. `VkRenderPass` and `VkFramebuffer` do not exist in this codebase.
-- **Explicit synchronisation** — all image transitions via `VkImageMemoryBarrier2` + `synchronization2`.
-- **VMA for all GPU memory** — no direct `vkAllocateMemory`.
-- **Validation layers always on** — zero errors on startup, runtime, and shutdown.
-- **Doxygen `///` on all public APIs** — `@file`, `@brief`, `@param`, `@return`, `@note`.
+- **RAII C++20** - Vulkan handles wrapped in classes with destructors. No raw `new`/`delete`.
+- **Dynamic Rendering only** - `vkCmdBeginRendering` / `vkCmdEndRendering`. `VkRenderPass` and `VkFramebuffer` do not exist in this codebase.
+- **Explicit synchronisation** - all image transitions via `VkImageMemoryBarrier2` + `synchronization2`.
+- **VMA for all GPU memory** - no direct `vkAllocateMemory`.
+- **Validation layers always on** - zero errors on startup, runtime, and shutdown.
+- **Doxygen `///` on all public APIs** - `@file`, `@brief`, `@param`, `@return`, `@note`.
 - 
 ---
 
@@ -182,8 +182,8 @@ All managed via **vcpkg manifest mode** — no manual installation beyond vcpkg 
 - [Vulkan 1.3 Specification](https://registry.khronos.org/vulkan/specs/1.3/html/)
 - [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap)
 - [Vulkan Tutorial](https://vulkan-tutorial.com/)
-- [SaschaWillems/Vulkan](https://github.com/SaschaWillems/Vulkan) — C++ Vulkan examples
-- [vkguide.dev](https://vkguide.dev/) — Modern Vulkan guide (Dynamic Rendering)
+- [SaschaWillems/Vulkan](https://github.com/SaschaWillems/Vulkan) - C++ Vulkan examples
+- [vkguide.dev](https://vkguide.dev/) - Modern Vulkan guide (Dynamic Rendering)
 - [3D Gaussian Splatting (Kerbl et al., 2023)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
 - [LearnOpenGL: PBR Theory](https://learnopengl.com/PBR/Theory)
 

@@ -1,4 +1,4 @@
-# Research — PBR Shading (Cook-Torrance BRDF)
+# Research - PBR Shading (Cook-Torrance BRDF)
 
 **Date:** 2026-03-30
 **Milestone:** M4 (Could Have)
@@ -19,9 +19,9 @@ The reflectance equation:
 $$f_r = k_d \frac{c}{\pi} + k_s \frac{DFG}{4(\omega_o \cdot n)(\omega_i \cdot n)}$$
 
 Components:
-- **D** — Normal Distribution Function (GGX/Trowbridge-Reitz): models microfacet distribution
-- **F** — Fresnel equation (Schlick approximation): reflection ratio at grazing angles
-- **G** — Geometry function (Smith): models self-shadowing of microfacets
+- **D** - Normal Distribution Function (GGX/Trowbridge-Reitz): models microfacet distribution
+- **F** - Fresnel equation (Schlick approximation): reflection ratio at grazing angles
+- **G** - Geometry function (Smith): models self-shadowing of microfacets
 
 ---
 
@@ -47,10 +47,10 @@ Components:
 
 ## Resources
 
-- **learnopengl.com/PBR** — best practical introduction
-- **Epic Games PBR notes (2013)** — foundational industry reference
-- **vkguide.dev** — Vulkan-specific descriptor set setup for textures
+- **learnopengl.com/PBR** - best practical introduction
+- **Epic Games PBR notes (2013)** - foundational industry reference
+- **vkguide.dev** - Vulkan-specific descriptor set setup for textures
 
 ---
 
-*FYP — Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
+*FYP - Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*

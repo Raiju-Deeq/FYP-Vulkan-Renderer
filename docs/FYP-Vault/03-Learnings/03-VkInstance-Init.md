@@ -1,7 +1,7 @@
 # Stage 1: Creating VkInstance with vk-bootstrap
 
 > **Vault location:** `docs/FYP-Vault/03-Learnings/03-VkInstance-Init.md`
-> **Relates to:** M1 — Baseline Vulkan Pipeline · `VulkanContext::init()` Stage 1 of 5
+> **Relates to:** M1 - Baseline Vulkan Pipeline · `VulkanContext::init()` Stage 1 of 5
 > **Prerequisites:** Vulkan SDK installed, vk-bootstrap in vcpkg.json, GLFW window created
 
 ---
@@ -37,13 +37,13 @@ Concretely, creating a `VkInstance` does the following:
 - Activates any **instance-level extensions** you request (e.g. the surface extension for windowing, the debug utils extension for validation messages)
 - Activates any **validation layers** you request
 
-Everything else — choosing a GPU, creating a logical device, allocating memory — cannot happen until the instance exists.
+Everything else - choosing a GPU, creating a logical device, allocating memory - cannot happen until the instance exists.
 
 ---
 
 ## What Is the Vulkan Loader?
 
-You will hear this term a lot. The Vulkan loader (`vulkan-1.dll` on Windows, `libvulkan.so` on Linux) is a thin dispatch layer that sits between your application and the actual GPU driver. When you call `vkCreateInstance`, you are not calling directly into NVIDIA or AMD code — you are calling into the loader, which then dispatches to the correct driver.
+You will hear this term a lot. The Vulkan loader (`vulkan-1.dll` on Windows, `libvulkan.so` on Linux) is a thin dispatch layer that sits between your application and the actual GPU driver. When you call `vkCreateInstance`, you are not calling directly into NVIDIA or AMD code - you are calling into the loader, which then dispatches to the correct driver.
 
 This design means:
 - Multiple GPUs from different vendors can coexist
@@ -62,7 +62,7 @@ Validation layers are optional diagnostic layers that intercept every Vulkan cal
 - Synchronisation errors (missing pipeline barriers, incorrect image layouts)
 - Parameter validation (null handles, out-of-range values)
 
-They are expensive at runtime, which is why they are disabled in release builds. In debug builds they are **non-negotiable** — validation layers are the single most important tool in Vulkan development. Zero errors on startup and shutdown is your hard requirement.
+They are expensive at runtime, which is why they are disabled in release builds. In debug builds they are **non-negotiable** - validation layers are the single most important tool in Vulkan development. Zero errors on startup and shutdown is your hard requirement.
 
 The primary layer you will use is `VK_LAYER_KHRONOS_validation`, which is the consolidated layer shipped with the Vulkan SDK.
 
@@ -72,9 +72,9 @@ The primary layer you will use is `VK_LAYER_KHRONOS_validation`, which is the co
 
 Even with validation layers enabled, you need a mechanism for the layer to *report* problems to you. That mechanism is `VkDebugUtilsMessengerEXT`.
 
-It is a callback object. You register a function pointer, and whenever the validation layer wants to report something — an error, a warning, a performance note — it calls your function with a message struct containing the severity, type, and message text.
+It is a callback object. You register a function pointer, and whenever the validation layer wants to report something - an error, a warning, a performance note - it calls your function with a message struct containing the severity, type, and message text.
 
-`vkb::InstanceBuilder::use_default_debug_messenger()` registers a built-in callback that prints everything to `stdout` via `fprintf`. For a student project this is exactly what you want. In production you would route messages through your logging system (spdlog in your case — you can wire this up later).
+`vkb::InstanceBuilder::use_default_debug_messenger()` registers a built-in callback that prints everything to `stdout` via `fprintf`. For a student project this is exactly what you want. In production you would route messages through your logging system (spdlog in your case - you can wire this up later).
 
 **Important subtlety:** there is a brief window during `vkCreateInstance` and `vkDestroyInstance` itself where the standard debug messenger does not exist yet. vk-bootstrap handles this automatically by also setting up a temporary messenger for those calls via `VkDebugUtilsMessengerCreateInfoEXT` embedded in the instance create info's `pNext` chain.
 
@@ -113,7 +113,7 @@ Why 1.3 specifically? Because Dynamic Rendering (`vkCmdBeginRendering`) was prom
 ```cpp
 builder.request_validation_layers()
 ```
-Requests `VK_LAYER_KHRONOS_validation`. The key word is **request** — this is a graceful fallback. If the Vulkan SDK is not installed on a machine and the layer is absent, instance creation proceeds without it rather than failing. This is the correct behaviour for a cross-platform project: validation on your dev machines, graceful degradation in other environments.
+Requests `VK_LAYER_KHRONOS_validation`. The key word is **request** - this is a graceful fallback. If the Vulkan SDK is not installed on a machine and the layer is absent, instance creation proceeds without it rather than failing. This is the correct behaviour for a cross-platform project: validation on your dev machines, graceful degradation in other environments.
 
 If you want to *require* validation layers and fail hard if absent, you would call `enable_validation_layers()` instead. For your FYP, `request_validation_layers()` is correct.
 
@@ -132,7 +132,7 @@ This is where the actual Vulkan calls happen. Under the hood vk-bootstrap:
 4. Calls `vkCreateInstance`
 5. Creates the debug messenger if validation was enabled
 
-The return type is `vkb::Result<vkb::Instance>` — a result wrapper. You must check it before using the value.
+The return type is `vkb::Result<vkb::Instance>` - a result wrapper. You must check it before using the value.
 
 ---
 
@@ -198,7 +198,7 @@ private:
 };
 ```
 
-### VulkanContext.cpp — Stage 1
+### VulkanContext.cpp - Stage 1
 
 ```cpp
 #include "VulkanContext.h"
@@ -216,10 +216,10 @@ private:
 void VulkanContext::init(GLFWwindow* window)
 {
     createInstance();
-    // Stage 2: createSurface(window);   — added next session
-    // Stage 3: pickPhysicalDevice();    — added next session
-    // Stage 4: createLogicalDevice();   — added next session
-    // Stage 5: createSwapchain();       — added next session
+    // Stage 2: createSurface(window);   - added next session
+    // Stage 3: pickPhysicalDevice();    - added next session
+    // Stage 4: createLogicalDevice();   - added next session
+    // Stage 5: createSwapchain();       - added next session
 }
 
 /// @brief Destroy in strict reverse-creation order.
@@ -227,7 +227,7 @@ void VulkanContext::cleanup()
 {
     // Stages 5-2 destroyed first (added as they are implemented)
 
-    // Stage 1 — always last
+    // Stage 1 - always last
     if (m_debugMessenger != VK_NULL_HANDLE)
     {
         vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
@@ -281,9 +281,9 @@ void VulkanContext::createInstance()
 
 ## What Validation Output Looks Like
 
-When Stage 1 works correctly and validation layers are active, you will see nothing (silence is success — the messenger only fires when something is wrong).
+When Stage 1 works correctly and validation layers are active, you will see nothing (silence is success - the messenger only fires when something is wrong).
 
-If you make an error — for example, destroying the instance before the messenger — you will see output like:
+If you make an error - for example, destroying the instance before the messenger - you will see output like:
 
 ```
 VUID-vkDestroyInstance-instance-00629(ERROR / SPEC): 
@@ -325,13 +325,13 @@ If validation layers were not available, `m_debugMessenger` will be `VK_NULL_HAN
 
 ## Further Reading
 
-- **Vulkan Spec — VkInstanceCreateInfo:** https://registry.khronos.org/vulkan/specs/1.3/html/vkspec.html#VkInstanceCreateInfo
+- **Vulkan Spec - VkInstanceCreateInfo:** https://registry.khronos.org/vulkan/specs/1.3/html/vkspec.html#VkInstanceCreateInfo
 - **vk-bootstrap source (InstanceBuilder):** https://github.com/charles-lunarg/vk-bootstrap/blob/main/src/VkBootstrap.h
-- **Vulkan Guide — Initialisation:** https://vkguide.dev/docs/new_chapter_1/vulkan_init_code/
-- **Vulkan Tutorial — Instance:** https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance
-- **YouTube — Brendan Galea "Vulkan Game Engine" Ep.1** (manual instance creation — useful contrast to understand what vk-bootstrap hides): https://www.youtube.com/watch?v=Y9U9IE0gVHA
-- **YouTube — vkguide.dev stream VODs** — search "vkguide new vulkan" on YouTube for the Dynamic Rendering series
+- **Vulkan Guide - Initialisation:** https://vkguide.dev/docs/new_chapter_1/vulkan_init_code/
+- **Vulkan Tutorial - Instance:** https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Instance
+- **YouTube - Brendan Galea "Vulkan Game Engine" Ep.1** (manual instance creation - useful contrast to understand what vk-bootstrap hides): https://www.youtube.com/watch?v=Y9U9IE0gVHA
+- **YouTube - vkguide.dev stream VODs** - search "vkguide new vulkan" on YouTube for the Dynamic Rendering series
 
 ---
 
-*Next note: Stage 2 — VkSurfaceKHR via `glfwCreateWindowSurface`*
+*Next note: Stage 2 - VkSurfaceKHR via `glfwCreateWindowSurface`*

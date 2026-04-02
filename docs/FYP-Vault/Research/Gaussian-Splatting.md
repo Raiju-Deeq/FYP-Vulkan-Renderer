@@ -1,4 +1,4 @@
-# Research — 3D Gaussian Splatting
+# Research - 3D Gaussian Splatting
 
 **Date:** 2026-03-30
 **Milestone:** M6 (stretch)
@@ -14,8 +14,8 @@
 
 ## Relevance to This Project
 
-- **M6 stretch goal** — render a pre-trained `.ply` splat file in the Vulkan renderer
-- **PhD research direction** — neural rendering at DMU builds directly on this
+- **M6 stretch goal** - render a pre-trained `.ply` splat file in the Vulkan renderer
+- **PhD research direction** - neural rendering at DMU builds directly on this
 - The renderer's Dynamic Rendering architecture makes adding a splat pass additive: a second `vkCmdBeginRendering` with `VK_ATTACHMENT_LOAD_OP_LOAD` composites splats onto the main scene
 
 ---
@@ -37,7 +37,7 @@ Each splat stores:
 4. **Alpha composite** splats front-to-back using additive blending
 
 ### M6 Scope Limit
-- Render pre-trained `.ply` files only — no training pipeline
+- Render pre-trained `.ply` files only - no training pipeline
 - Cap at 1M splats for performance
 - Hard gate: M6 cannot begin until M3 is signed off
 
@@ -45,8 +45,8 @@ Each splat stores:
 
 ## Key Papers
 
-- Kerbl et al. (2023) — *3D Gaussian Splatting for Real-Time Radiance Field Rendering* — SIGGRAPH 2023
-- Zwicker et al. (2002) — *EWA Splatting* — foundational splatting theory
+- Kerbl et al. (2023) - *3D Gaussian Splatting for Real-Time Radiance Field Rendering* - SIGGRAPH 2023
+- Zwicker et al. (2002) - *EWA Splatting* - foundational splatting theory
 
 ---
 
@@ -65,4 +65,4 @@ struct GaussianPoint {
 
 ---
 
-*FYP — Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
+*FYP - Vulkan Renderer in C++20 · Mohamed Deeq Mohamed · P2884884 · De Montfort University*
