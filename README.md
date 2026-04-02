@@ -29,7 +29,7 @@ and as a foundation for PhD research in neural rendering (starting October 2026)
 The Gaussian Splatting milestone (M6) is a deliberate pilot for the PhD, bridging
 real-time Vulkan rendering with neural radiance field representations.
 
-Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/Home.md).
+Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/README.md).
 
 ---
 
