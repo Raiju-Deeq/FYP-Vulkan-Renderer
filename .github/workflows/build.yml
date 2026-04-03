@@ -11,17 +11,14 @@ jobs:
     name: Ubuntu — Ninja — Release
     runs-on: ubuntu-latest
 
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      VCPKG_COMMIT: "a42af01b72c28a8e47d2309876e0ef3d64f2e55f"
-
     steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # Official LunarG apt method for Ubuntu 24.04 (noble) runners
+      # ── 2. Vulkan SDK + system deps ──────────────────────────────────────
       - name: Install Vulkan SDK and system dependencies
         run: |
           wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc \
@@ -38,41 +35,48 @@ jobs:
             libxi-dev \
             libxrandr-dev \
             ninja-build
-          # Confirm glslc is available
           glslc --version
           echo "VULKAN_SDK=/usr" >> $GITHUB_ENV
 
-      # Enable GHA cache for vcpkg binaries
-      - name: Export vcpkg cache env vars
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      # ── 3. Bootstrap vcpkg ───────────────────────────────────────────────
+      # Clone Microsoft's vcpkg directly and bootstrap it.
+      # This avoids all third-party actions and pinned-commit issues.
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+          $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
 
-      # Bootstrap vcpkg and install all deps from vcpkg.json
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        id: vcpkg
-        with:
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+      # ── 4. Install dependencies from vcpkg.json ──────────────────────────
+      # vcpkg reads vcpkg.json in the repo root and installs all deps:
+      # vk-bootstrap, glfw3, glm, vulkan-memory-allocator, stb,
+      # tinyobjloader, imgui (glfw+vulkan bindings), spdlog
+      - name: Install vcpkg dependencies
+        run: |
+          $HOME/vcpkg/vcpkg install \
+            --triplet x64-linux \
+            --x-manifest-root=. \
+            --x-install-root=$HOME/vcpkg/installed
 
+      # ── 5. Configure CMake ───────────────────────────────────────────────
       - name: Configure CMake
         run: |
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.vcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}/scripts/buildsystems/vcpkg.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET=x64-linux \
             -DVULKAN_SDK=/usr \
             -DBUILD_DOCS=OFF
 
+      # ── 6. Build ─────────────────────────────────────────────────────────
       - name: Build
         run: cmake --build build --parallel
 
+      # ── 7. Verify binary ─────────────────────────────────────────────────
       - name: Verify executable was produced
         run: |
           ls -lh build/
           test -f build/vulkan-renderer \
             && echo "✅ vulkan-renderer binary found" \
-            || (echo "❌ Binary not found — check CMakeLists.txt target name" && ls build/ && exit 1)
+            || (echo "❌ Binary not found — listing build dir for diagnosis:" && find build/ -type f && exit 1)
