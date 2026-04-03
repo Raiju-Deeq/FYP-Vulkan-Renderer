@@ -1,0 +1,113 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# FYP Vulkan Renderer — CI Build Pipeline
+# Author : Mohamed Deeq Mohamed
+#
+# Triggers : every push / PR targeting main
+# Runner   : ubuntu-latest (GitHub-hosted)
+# Goal     : compile-only check — proves the project builds on a clean machine
+#            with a reproducible dependency set (vcpkg + Vulkan SDK).
+#
+# Note: No GPU is present on CI runners, so the executable is built but NOT
+# run.  Runtime / integration tests can be added when a self-hosted runner
+# with a GPU is available.
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: CMake Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    name: Ubuntu — Ninja — Release
+    runs-on: ubuntu-latest
+
+    env:
+      # vcpkg binary caching — dramatically cuts repeat build times
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      # Pin vcpkg to a known-good commit for reproducibility
+      VCPKG_COMMIT: "a42af01b72c28a8e47d2309876e0ef3d64f2e55f"
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── 2. Vulkan SDK ─────────────────────────────────────────────────────
+      # Installs the LunarG Vulkan SDK which provides:
+      #   - Vulkan headers  (needed at compile time)
+      #   - glslc           (SPIR-V shader compiler, called by CMakeLists)
+      #   - Validation layers (not used in CI but included in the SDK)
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.1.1
+        with:
+          version: latest
+          cache: true
+
+      # ── 3. System packages ───────────────────────────────────────────────
+      # libgl-dev     — OpenGL headers required by GLFW on Linux
+      # libxinerama   — X11 multi-monitor support needed by GLFW
+      # libxcursor    — cursor shape API needed by GLFW
+      # libxi         — X input extension needed by GLFW
+      # libxrandr     — screen resolution API needed by GLFW
+      # ninja-build   — fast parallel build tool (mirrors linux-debug preset)
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgl-dev \
+            libx11-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            ninja-build
+
+      # ── 4. vcpkg ─────────────────────────────────────────────────────────
+      # Bootstraps vcpkg at the pinned commit and reads vcpkg.json to
+      # install all project dependencies (vk-bootstrap, glfw3, glm,
+      # vulkan-memory-allocator, stb, tinyobjloader, imgui, spdlog).
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+
+      # Enable GitHub Actions cache for vcpkg binary packages
+      - name: Export GitHub Actions cache env vars for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      # ── 5. Configure ─────────────────────────────────────────────────────
+      # Uses CMake directly (not the CMakePresets linux-debug preset) because
+      # that preset hardcodes /home/mdeeq0/vcpkg which doesn't exist in CI.
+      # We point -DCMAKE_TOOLCHAIN_FILE at the freshly-bootstrapped vcpkg.
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DBUILD_DOCS=OFF
+
+      # ── 6. Build ─────────────────────────────────────────────────────────
+      # --parallel uses all available cores on the runner (typically 4)
+      - name: Build
+        run: cmake --build build --parallel
+
+      # ── 7. Verify binary exists ──────────────────────────────────────────
+      # Sanity check — confirms the linker produced an executable, not just
+      # object files. Not a runtime test; just proves the output exists.
+      - name: Verify executable was produced
+        run: |
+          echo "Build artifacts:"
+          ls -lh build/
+          test -f build/vulkan-renderer && echo "✅ vulkan-renderer binary found" || (echo "❌ Binary missing" && exit 1)
