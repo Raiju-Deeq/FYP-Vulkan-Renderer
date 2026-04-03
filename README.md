@@ -1,3 +1,4 @@
+![CI](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/actions/workflows/build.yml/badge.svg)
 <p align="center">
   <i>Screenshot will be placed here once M1 is complete</i>
 </p>
