@@ -101,10 +101,15 @@
   },
 
   // ── Docs ─────────────────────────────────────────────────────────────────
+  // Calls doxygen directly so it works regardless of whether the cmake
+  // 'docs' target was registered during the last configure run.
   {
     "label": "Docs: Generate (Doxygen)",
-    "command": "cmake",
-    "args": ["--build", "--preset", "linux-debug", "--target", "docs"],
+    "command": "bash",
+    "args": [
+      "-c",
+      "doxygen docs/Doxyfile && echo 'Doxygen finished — output in docs/html/'"
+    ],
     "cwd": "$ZED_WORKTREE_ROOT",
     "tags": ["docs"]
   },
