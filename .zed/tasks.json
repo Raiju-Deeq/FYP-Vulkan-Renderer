@@ -1,0 +1,120 @@
+[
+  // ── Configure ────────────────────────────────────────────────────────────
+  {
+    "label": "CMake: Configure (linux-debug)",
+    "command": "cmake",
+    "args": ["--preset", "linux-debug"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "configure"]
+  },
+  {
+    "label": "CMake: Configure (linux-release)",
+    "command": "cmake",
+    "args": ["--preset", "linux-release"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "configure"]
+  },
+
+  // ── Build ────────────────────────────────────────────────────────────────
+  {
+    "label": "CMake: Build (linux-debug)",
+    "command": "cmake",
+    "args": ["--build", "--preset", "linux-debug"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "build"]
+  },
+  {
+    "label": "CMake: Build (linux-release)",
+    "command": "cmake",
+    "args": ["--build", "--preset", "linux-release"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "build"]
+  },
+
+  // ── Configure + Build (one-shot) ─────────────────────────────────────────
+  {
+    "label": "CMake: Configure & Build (linux-debug)",
+    "command": "bash",
+    "args": [
+      "-c",
+      "cmake --preset linux-debug && cmake --build --preset linux-debug"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "build"]
+  },
+  {
+    "label": "CMake: Configure & Build (linux-release)",
+    "command": "bash",
+    "args": [
+      "-c",
+      "cmake --preset linux-release && cmake --build --preset linux-release"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["cmake", "build"]
+  },
+
+  // ── Run ──────────────────────────────────────────────────────────────────
+  {
+    "label": "Run: vulkan-renderer (linux-debug)",
+    "command": "./build/linux-debug/vulkan-renderer",
+    "args": [],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["run"]
+  },
+  {
+    "label": "Run: vulkan-renderer (linux-release)",
+    "command": "./build/linux-release/vulkan-renderer",
+    "args": [],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["run"]
+  },
+
+  // ── Build & Run (one-shot) ───────────────────────────────────────────────
+  {
+    "label": "Build & Run (linux-debug)",
+    "command": "bash",
+    "args": [
+      "-c",
+      "cmake --build --preset linux-debug && ./build/linux-debug/vulkan-renderer"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["run"]
+  },
+
+  // ── Shaders ──────────────────────────────────────────────────────────────
+  {
+    "label": "Shaders: Compile all (glslc)",
+    "command": "bash",
+    "args": [
+      "-c",
+      "find shaders -maxdepth 1 \\( -name '*.vert' -o -name '*.frag' -o -name '*.comp' \\) | while read f; do echo \"Compiling $f\"; glslc \"$f\" -o \"${f}.spv\" || exit 1; done && echo 'All shaders compiled.'"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["shaders"]
+  },
+  {
+    "label": "Shaders: Clean .spv files",
+    "command": "bash",
+    "args": ["-c", "find shaders -name '*.spv' -delete && echo 'SPV files removed.'"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["shaders"]
+  },
+
+  // ── Docs ─────────────────────────────────────────────────────────────────
+  {
+    "label": "Docs: Generate (Doxygen)",
+    "command": "cmake",
+    "args": ["--build", "--preset", "linux-debug", "--target", "docs"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["docs"]
+  },
+
+  // ── Clean ────────────────────────────────────────────────────────────────
+  {
+    "label": "Clean: build directory",
+    "command": "bash",
+    "args": ["-c", "rm -rf build/ install/ && echo 'Build artefacts removed.'"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "tags": ["clean"]
+  }
+]
