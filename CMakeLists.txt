@@ -30,6 +30,7 @@ find_package(Stb REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(tinyply CONFIG REQUIRED)
 
 # ── Include directories ──────────────────────────────────────────────────────
 target_include_directories(vulkan-renderer PRIVATE
@@ -47,6 +48,7 @@ target_link_libraries(vulkan-renderer PRIVATE
         tinyobjloader::tinyobjloader
         imgui::imgui
         spdlog::spdlog
+        tinyply
 )
 
 # ── Platform compile definitions ─────────────────────────────────────────────

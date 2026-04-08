@@ -78,6 +78,9 @@ sudo pacman -S vulkan-radeon vulkan-validation-layers cmake ninja git \
 
 git clone https://github.com/microsoft/vcpkg "$HOME/vcpkg"
 "$HOME/vcpkg/bootstrap-vcpkg.sh"
+
+# Add to ~/.bashrc or ~/.zshrc so VCPKG_ROOT is set permanently on every new shell.
+# The CMake presets use $env{VCPKG_ROOT} — without this the configure step will fail.
 export VCPKG_ROOT="$HOME/vcpkg"
 
 cmake --preset linux-debug
