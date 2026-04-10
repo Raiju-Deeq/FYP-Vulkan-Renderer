@@ -1,9 +1,4 @@
 ![CI](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/actions/workflows/build.yml/badge.svg)
-<p align="center">
-  <img src="docs/screenshots/M1-triangle.png" alt="M1 – Coloured Triangle rendered via Dynamic Rendering" width="720"/>
-  <br/>
-  <em>M1 – Coloured Triangle · Dynamic Rendering pipeline · Vulkan 1.3</em>
-</p>
 
 # Vulkan Renderer
 
@@ -47,6 +42,15 @@ Full project documentation lives in the [Obsidian Vault](docs/FYP-Vault/README.m
 - [ ] **M4 - Renderer Polish** · Interactive camera, swapchain resize, zero validation errors, reproducible cross-platform build, technical report
 - [ ] **M5 - PBR Shading** *(stretch)* · Cook-Torrance BRDF (GGX + Smith + Schlick), Dear ImGui material panel
 - [ ] **M6 - 3D Gaussian Splatting** *(stretch / PhD pilot)* · `.ply` ingestion, GPU storage buffers, depth sorting, ellipse projection, alpha compositing
+
+---
+
+## Screenshots
+<p align="center">
+  <img src="docs/screenshots/M1-triangle.png" alt="M1 – Coloured Triangle rendered via Dynamic Rendering" width="720"/>
+  <br/>
+  <em>M1 – Coloured Triangle · Dynamic Rendering pipeline · Vulkan 1.3</em>
+</p>
 
 ---
 
