@@ -1,6 +1,8 @@
 ![CI](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/actions/workflows/build.yml/badge.svg)
 <p align="center">
-  <i>Screenshot will be placed here once M1 is complete</i>
+  <img src="docs/screenshots/M1-triangle.png" alt="M1 – Coloured Triangle rendered via Dynamic Rendering" width="720"/>
+  <br/>
+  <em>M1 – Coloured Triangle · Dynamic Rendering pipeline · Vulkan 1.3</em>
 </p>
 
 # Vulkan Renderer
