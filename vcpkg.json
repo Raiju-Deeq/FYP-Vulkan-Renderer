@@ -13,6 +13,7 @@
       "features": ["glfw-binding", "vulkan-binding"]
     },
     "spdlog",
-    "tinyply"
+    "tinyply",
+    "shaderc"
   ]
 }

@@ -95,9 +95,18 @@ endif()
 # ── SPIR-V shader compilation (glslc) ────────────────────────────────────────
 # Finds glslc from VULKAN_SDK/bin first, then falls back to PATH.
 # If not found, shaders must be compiled manually - the warning tells you the command.
-find_program(GLSLC glslc HINTS
+# Search order:
+# 1. vcpkg installed tools (shaderc package) — works without Vulkan SDK
+# 2. VULKAN_SDK bin — works if SDK is installed system-wide
+# 3. System PATH fallback
+find_program(GLSLC glslc
+        HINTS
+        "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/tools/shaderc"
+        "${CMAKE_SOURCE_DIR}/build/${PRESET_NAME}/vcpkg_installed/x64-windows/tools/shaderc"
         "$ENV{VULKAN_SDK}/bin"
         "$ENV{VULKAN_SDK}/Bin"
+        PATHS
+        "$ENV{PATH}"
 )
 
 if(GLSLC)
@@ -138,6 +147,14 @@ add_custom_command(TARGET vulkan-renderer POST_BUILD
         "${CMAKE_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:vulkan-renderer>/assets"
         COMMENT "Copying assets to build directory"
+)
+
+# ── Copy shaders to build output directory ───────────────────────────────────
+add_custom_command(TARGET vulkan-renderer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/shaders"
+        "$<TARGET_FILE_DIR:vulkan-renderer>/shaders"
+        COMMENT "Copying shaders to build directory"
 )
 
 # --- Doxygen integration ---

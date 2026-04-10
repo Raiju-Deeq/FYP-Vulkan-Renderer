@@ -101,6 +101,10 @@ public:
     uint32_t              imageCount() const
         { return static_cast<uint32_t>(m_imageViews.size()); }
 
+    /// @brief Returns the raw swapchain images (not owned — owned by the swapchain).
+    /// @note  Required by Renderer to set up synchronization2 image layout barriers.
+    const std::vector<VkImage>& images() const { return m_images; }
+
 private:
     VkSwapchainKHR           m_swapchain  = VK_NULL_HANDLE;    ///< Raw swapchain handle.
     VkFormat                 m_format     = VK_FORMAT_UNDEFINED; ///< Selected image format.
