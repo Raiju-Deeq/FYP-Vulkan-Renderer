@@ -15,7 +15,7 @@
  * tinyply::PlyFile file;
  * file.parse_header(ss);
  *
- * // Request the properties we need:
+ * // Request the properties I need:
  * auto positions  = file.request_properties_from_element("vertex", {"x","y","z"});
  * auto opacities  = file.request_properties_from_element("vertex", {"opacity"});
  * auto scales     = file.request_properties_from_element("vertex", {"scale_0","scale_1","scale_2"});

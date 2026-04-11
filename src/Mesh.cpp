@@ -5,8 +5,8 @@
  * ## Implementation plan (Week 3 — Milestone 2)
  *
  * ### upload()
- *  1. Calculate the byte sizes for the vertex and index arrays.
- *  2. Create a *staging* buffer in host-visible memory (CPU-writable) via VMA:
+ *  1. I calculate the byte sizes for the vertex and index arrays.
+ *  2. I create a *staging* buffer in host-visible memory (CPU-writable) via VMA:
  *     ```cpp
  *     VmaAllocationCreateInfo stagingAllocInfo{};
  *     stagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;

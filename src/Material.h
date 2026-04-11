@@ -3,7 +3,7 @@
  * @brief PBR material parameters, GPU textures and descriptor set management.
  *
  * ## What a descriptor set is
- * A descriptor set is how you hand resources (textures, uniform buffers) to
+ * A descriptor set is how I hand resources (textures, uniform buffers) to
  * shaders in Vulkan.  Think of it as a table of pointers:
  *
  *  - Each *binding* slot in the table holds one resource (a UBO, an image
@@ -71,18 +71,17 @@ struct MaterialUBO
 
 /**
  * @class Material
- * @brief Owns GPU textures, a sampler, a UBO and a descriptor set for PBR shading.
+ * @brief I own GPU textures, a sampler, a UBO and a descriptor set for PBR shading.
  *
  * ## Default textures
- * If no external texture is loaded, Material creates a 1×1 white RGBA8 image
- * and uses it as the albedo.  Combined with `baseColourFactor`, this lets
- * colour be driven entirely by the CPU-side material constants for simple
- * objects.
+ * If no external texture is loaded, I create a 1×1 white RGBA8 image and use
+ * it as the albedo.  Combined with `baseColourFactor`, this lets colour be
+ * driven entirely by the CPU-side material constants for simple objects.
  *
  * ## Ownership model
- * - **Owns:** `VkBuffer` (UBO), `VkImage` (albedo), `VkImageView`,
+ * - **I own:** `VkBuffer` (UBO), `VkImage` (albedo), `VkImageView`,
  *   `VkSampler`, `VkDescriptorSet`.
- * - **Does NOT own:** `VkDescriptorPool` — the pool is created by Renderer
+ * - **I do NOT own:** `VkDescriptorPool` — the pool is created by Renderer
  *   and passed in at init().
  *
  * ## Usage (M3+)

@@ -32,14 +32,14 @@
 /// @details
 /// **Why `get_images()` and `get_image_views()` are separate calls:**
 /// - `VkImage` handles are allocated by the driver when the swapchain is
-///   created — we retrieve them with `vkGetSwapchainImagesKHR`.  We do NOT
+///   created — I retrieve them with `vkGetSwapchainImagesKHR`.  I do NOT
 ///   own them; they are freed when the swapchain is destroyed.
 /// - `VkImageView` handles must be created separately with `vkCreateImageView`
-///   for each image.  We DO own these and must destroy them ourselves before
+///   for each image.  I DO own these and must destroy them myself before
 ///   destroying the swapchain.
 ///
 /// vk-bootstrap wraps both calls behind `get_images()` and `get_image_views()`
-/// so we don't have to write the loops manually.
+/// so I don't have to write the loops manually.
 bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
 {
     // Pass all three core context handles to the builder so it can query
@@ -71,9 +71,9 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
     m_format    = vkbSwap.image_format;
     m_extent    = vkbSwap.extent;
 
-    // Retrieve the VkImages the driver created for us.
-    // These are NOT owned by this class — the driver reclaims them when the
-    // swapchain is destroyed.  We store them so Renderer can record image
+    // Retrieve the VkImages the driver created for me.
+    // I do NOT own these — the driver reclaims them when the
+    // swapchain is destroyed.  I store them so Renderer can record image
     // layout transition barriers (it needs the raw VkImage handle).
     auto imagesResult = vkbSwap.get_images();
     if (!imagesResult) {
@@ -86,7 +86,7 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
     // Image views are thin wrappers that tell the driver *how* to interpret
     // the raw image data — format, aspect (colour vs depth), mip/array ranges.
     // Rendering commands reference image views, not raw images.
-    // We OWN these and must destroy them before destroying the swapchain.
+    // I OWN these and must destroy them before destroying the swapchain.
     auto viewsResult = vkbSwap.get_image_views();
     if (!viewsResult) {
         spdlog::error("SwapChain: failed to retrieve image views: {}", viewsResult.error().message());
@@ -115,12 +115,12 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
 void SwapChain::destroy(const VulkanContext& ctx)
 {
     // Destroy each image view.  The raw VkImages are owned by the swapchain
-    // (not by us) so we intentionally do NOT call vkDestroyImage here.
+    // (not by me) so I intentionally do NOT call vkDestroyImage here.
     for (VkImageView view : m_imageViews) {
         vkDestroyImageView(ctx.device(), view, nullptr);
     }
     m_imageViews.clear();
-    m_images.clear(); // just clearing the handles — we never owned these
+    m_images.clear(); // just clearing the handles — I never owned these
 
     if (m_swapchain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(ctx.device(), m_swapchain, nullptr);

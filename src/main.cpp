@@ -15,17 +15,17 @@
  * ```
  *
  * ## Why GLFW_NO_API?
- * GLFW defaults to creating an OpenGL context alongside the window.  We drive
- * Vulkan ourselves so we must suppress this with `GLFW_CLIENT_API = GLFW_NO_API`.
+ * GLFW defaults to creating an OpenGL context alongside the window.  I drive
+ * Vulkan myself so I must suppress this with `GLFW_CLIENT_API = GLFW_NO_API`.
  * Forgetting this hint causes GLFW to error on `glfwCreateWindow` when there
  * is no OpenGL ICD available, or silently creates an incompatible context.
  *
  * ## Window resize handling
  * When the OS window is resized:
  *  1. `drawFrame()` returns false (swapchain `VK_ERROR_OUT_OF_DATE_KHR`).
- *  2. `renderer.waitIdle()` ensures the GPU finishes all in-flight work.
+ *  2. I call `renderer.waitIdle()` to ensure the GPU finishes all in-flight work.
  *  3. `swap.rebuild()` tears down and recreates the swapchain at the new size.
- *  4. `pipeline` is also recreated because the colour attachment format *could*
+ *  4. I also recreate `pipeline` because the colour attachment format *could*
  *     have changed (rare, but required for correctness).
  *  5. The render loop continues from the next `drawFrame()`.
  *
@@ -96,8 +96,8 @@ int main()
     }
 
     // GLFW_NO_API: do not create an OpenGL context.  Vulkan manages its own
-    // rendering — we don't want GLFW to create an incompatible GL context.
-    // GLFW_RESIZABLE: allow the user to drag-resize the window; we handle the
+    // rendering — I don't want GLFW to create an incompatible GL context.
+    // GLFW_RESIZABLE: allow the user to drag-resize the window; I handle the
     // resulting swapchain rebuild in the render loop below.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -122,9 +122,9 @@ int main()
     }
 
     // ── SwapChain ─────────────────────────────────────────────────────────
-    // We query the *framebuffer* size (physical pixels) rather than the window
+    // I query the *framebuffer* size (physical pixels) rather than the window
     // size (logical/DPI-scaled pixels).  On high-DPI displays these differ.
-    // Vulkan works in physical pixels so we must pass the framebuffer size.
+    // Vulkan works in physical pixels so I must pass the framebuffer size.
     int fbWidth = 0, fbHeight = 0;
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
 
@@ -174,7 +174,7 @@ int main()
 
         // Skip rendering while minimised.  A zero-size framebuffer means the
         // swapchain extent would be 0×0, which is an invalid argument to the
-        // Vulkan present call.  We wait for an event (glfwWaitEvents) instead
+        // Vulkan present call.  I wait for an event (glfwWaitEvents) instead
         // of spinning to avoid burning CPU while the window is minimised.
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         if (fbWidth == 0 || fbHeight == 0) {
@@ -184,7 +184,7 @@ int main()
         if (!renderer.drawFrame(ctx, swap, pipeline)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
-            // We must wait for all in-flight GPU work to finish before
+            // I must wait for all in-flight GPU work to finish before
             // destroying/recreating swapchain resources — the GPU may still be
             // reading from images that are about to be destroyed.
             renderer.waitIdle(ctx);
@@ -203,7 +203,7 @@ int main()
                 break;
             }
 
-            // The pipeline must also be recreated because the colour attachment
+            // I must also recreate the pipeline because the colour attachment
             // format *could* have changed after a swapchain rebuild.  In practice
             // the format rarely changes, but the spec does not guarantee it stays
             // the same, so rebuilding is the correct approach.
@@ -218,7 +218,7 @@ int main()
     spdlog::info("main: window closed — shutting down");
 
     // ── Teardown (strict reverse construction order) ───────────────────────
-    // Wait for the GPU to drain all in-flight frames before touching any handle.
+    // I wait for the GPU to drain all in-flight frames before touching any handle.
     // Destroying a resource the GPU is still reading is undefined behaviour.
     renderer.waitIdle(ctx);
 

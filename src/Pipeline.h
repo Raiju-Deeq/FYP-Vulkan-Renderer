@@ -43,18 +43,17 @@ class VulkanContext;
 
 /**
  * @class Pipeline
- * @brief Owns a compiled Vulkan graphics pipeline and its associated layout.
+ * @brief I own a compiled Vulkan graphics pipeline and its associated layout.
  *
  * ## Ownership model
- * - **Owns:** `VkPipeline`, `VkPipelineLayout`, optionally `VkDescriptorSetLayout`.
- * - **Does NOT own:** shader modules — they are created temporarily during
- *   init() and destroyed immediately after pipeline compilation.
+ * - **I own:** `VkPipeline`, `VkPipelineLayout`, optionally `VkDescriptorSetLayout`.
+ * - **I do NOT own:** shader modules — I create them temporarily during
+ *   init() and destroy them immediately after pipeline compilation.
  *
  * ## Dependency on SwapChain
- * Pipeline::init() requires the swapchain colour format so the pipeline can
- * declare the correct attachment format for Dynamic Rendering.  If the
- * swapchain is rebuilt with a different format (rare but possible), the
- * pipeline must also be rebuilt — see the resize path in main.cpp.
+ * I require the swapchain colour format so I can declare the correct attachment
+ * format for Dynamic Rendering.  If the swapchain is rebuilt with a different
+ * format (rare but possible), I must also be rebuilt — see the resize path in main.cpp.
  *
  * ## Usage
  * @code

@@ -5,12 +5,12 @@
  * ## Key design point: no VkRenderPass
  * This renderer uses Vulkan 1.3 Dynamic Rendering throughout.  Rather than
  * pre-baking a `VkRenderPass` object that describes all attachments in
- * advance, we chain a `VkPipelineRenderingCreateInfo` struct into the
+ * advance, I chain a `VkPipelineRenderingCreateInfo` struct into the
  * pipeline's `pNext` chain at creation time.  This struct declares which
  * attachment *formats* the pipeline will render to.  The actual image views
  * are then provided at command-recording time via `vkCmdBeginRendering`.
  *
- * This is cleaner for a renderer that rebuilds pipelines on resize (we just
+ * This is cleaner for a renderer that rebuilds pipelines on resize (I just
  * pass the new swapchain format — no RenderPass object to update).
  *
  * @author Mohamed Deeq Mohamed (P2884884)
@@ -34,7 +34,7 @@
 /// in a `vector<uint32_t>` guarantees the correct alignment for
 /// `VkShaderModuleCreateInfo::pCode`.
 ///
-/// The file is opened in binary mode and read in one shot.  We seek to the
+/// I open the file in binary mode and read it in one shot.  I seek to the
 /// end first to get the size, then seek back to the start to read — this
 /// avoids allocating a temporary char buffer and then copying.
 std::vector<uint32_t> Pipeline::loadSpv(const std::string& path)
@@ -98,8 +98,8 @@ VkShaderModule Pipeline::createShaderModule(VkDevice device,
 /// GPU object.
 ///
 /// **Viewport/scissor as dynamic state:**
-/// We mark these as dynamic so we don't bake the window size into the pipeline.
-/// When the window is resized we only need to rebuild the swapchain and call
+/// I mark these as dynamic so I don't bake the window size into the pipeline.
+/// When the window is resized I only need to rebuild the swapchain and call
 /// `vkCmdSetViewport`/`vkCmdSetScissor` with new values — not rebuild the
 /// whole pipeline.
 ///
@@ -114,7 +114,7 @@ bool Pipeline::init(const VulkanContext& ctx,
                     VkFormat             colourFormat)
 {
     // ── 1 & 2: Load SPIR-V and create shader modules ──────────────────────
-    // Shader modules are only needed during pipeline compilation.  We create
+    // Shader modules are only needed during pipeline compilation.  I create
     // them here and destroy them at the end of this function (step 8).
     auto vertCode = loadSpv(vertSpvPath);
     if (vertCode.empty()) return false;
@@ -165,9 +165,9 @@ bool Pipeline::init(const VulkanContext& ctx,
 
     // ── 4c: Dynamic viewport and scissor ─────────────────────────────────
     // Listing these in the dynamic state array means their values are NOT
-    // baked into the pipeline.  Instead, vkCmdSetViewport and vkCmdSetScissor
-    // must be called every frame before the first draw.  The tradeoff is that
-    // the pipeline can be reused without change when the window is resized —
+    // baked into the pipeline.  Instead, I must call vkCmdSetViewport and
+    // vkCmdSetScissor every frame before the first draw.  The tradeoff is
+    // that I can reuse the pipeline without change when the window is resized —
     // only the per-frame dynamic calls change.
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -178,7 +178,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     dynamicState.dynamicStateCount = 2;
     dynamicState.pDynamicStates    = dynamicStates;
 
-    // Even though the values are dynamic, we must tell the pipeline how many
+    // Even though the values are dynamic, I must tell the pipeline how many
     // viewports/scissors there will be at draw time.
     VkPipelineViewportStateCreateInfo viewportState{
         VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -188,7 +188,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     // ── 4d: Rasteriser ────────────────────────────────────────────────────
     // FILL: draw solid filled triangles (vs. LINE for wireframe).
     // CULL_MODE_NONE: the M1 triangle is not a closed mesh and has no
-    //   defined "back" face, so we disable culling entirely.
+    //   defined "back" face, so I disable culling entirely.
     // lineWidth must be 1.0f unless the wideLines feature is enabled.
     VkPipelineRasterizationStateCreateInfo rasterizer{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -223,7 +223,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     // The layout declares what *types* of resources the shaders can access:
     //   - setLayoutCount / pSetLayouts  : descriptor set layouts (UBOs, samplers)
     //   - pushConstantRangeCount        : push constant ranges
-    // For M1 the triangle shader has no external resources, so this is empty.
+    // For M1 the triangle shader has no external resources, so I leave this empty.
     // M2 will add the MVP UBO descriptor set layout here.
     VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     if (vkCreatePipelineLayout(ctx.device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS) {
@@ -273,7 +273,7 @@ bool Pipeline::init(const VulkanContext& ctx,
 
     // ── 8: Destroy shader modules ─────────────────────────────────────────
     // The pipeline has been compiled.  The driver extracted what it needed
-    // from the SPIR-V; the VkShaderModule handles are no longer useful and
+    // from the SPIR-V; I no longer need the VkShaderModule handles and
     // freeing them reduces memory usage.
     vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
     vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
@@ -288,7 +288,7 @@ bool Pipeline::init(const VulkanContext& ctx,
 
 /// @details
 /// Pipelines, layouts and descriptor set layouts have no dependency ordering
-/// between them — any order is safe.  We destroy the pipeline first (most
+/// between them — any order is safe.  I destroy the pipeline first (most
 /// complex object), then the layout (it was required during pipeline creation
 /// but the pipeline keeps its own reference).
 void Pipeline::destroy(const VulkanContext& ctx)

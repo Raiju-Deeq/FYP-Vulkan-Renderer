@@ -20,10 +20,10 @@
  * This pattern is used for both the vertex buffer and the index buffer.
  *
  * ## VMA (Vulkan Memory Allocator)
- * GPU memory management in raw Vulkan is complex — you must manually call
+ * GPU memory management in raw Vulkan is complex — I would have to manually call
  * `vkAllocateMemory` and track alignment, heap types and sub-allocations.
  * VMA (GPUOpen::VulkanMemoryAllocator) handles all of this automatically.
- * We call `vmaCreateBuffer` instead of `vkCreateBuffer` + `vkAllocateMemory`,
+ * I call `vmaCreateBuffer` instead of `vkCreateBuffer` + `vkAllocateMemory`,
  * and `vmaDestroyBuffer` instead of `vkDestroyBuffer` + `vkFreeMemory`.
  *
  * @note  Implementation is deferred to Milestone 2 (Week 3).
@@ -64,12 +64,12 @@ struct Vertex
 
 /**
  * @class Mesh
- * @brief Owns GPU vertex and index buffers for a single drawable mesh.
+ * @brief I own GPU vertex and index buffers for a single drawable mesh.
  *
  * ## Ownership model
- * - **Owns:** `VkBuffer` (vertex), `VkBuffer` (index), `VmaAllocation` ×2.
- * - The VmaAllocations are the memory backing the buffers — they must be
- *   freed together with the buffers via `vmaDestroyBuffer`.
+ * - **I own:** `VkBuffer` (vertex), `VkBuffer` (index), `VmaAllocation` ×2.
+ * - The VmaAllocations are the memory backing the buffers — I must free
+ *   them together with the buffers via `vmaDestroyBuffer`.
  *
  * ## Usage pattern (M2+)
  * @code

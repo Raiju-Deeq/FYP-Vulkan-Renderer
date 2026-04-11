@@ -57,16 +57,16 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 /**
  * @class Renderer
- * @brief Owns per-frame GPU resources and drives the main render loop.
+ * @brief I own per-frame GPU resources and drive the main render loop.
  *
  * ## Ownership model
- * - **Owns:** `VkCommandPool`, `VkCommandBuffer[]`, `VkSemaphore[]` (both
+ * - **I own:** `VkCommandPool`, `VkCommandBuffer[]`, `VkSemaphore[]` (both
  *   arrays), `VkFence[]`.
- * - **Does NOT own:** swapchain images, pipeline, VulkanContext handles.
+ * - **I do NOT own:** swapchain images, pipeline, VulkanContext handles.
  *
  * ## Dependency
- * Renderer must be initialised after both VulkanContext and SwapChain.  It
- * reads `swap.imageCount()` to size the renderFinished semaphore array.
+ * I must be initialised after both VulkanContext and SwapChain.  I read
+ * `swap.imageCount()` to size the renderFinished semaphore array.
  *
  * ## Usage
  * @code
