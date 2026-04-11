@@ -1,113 +1,143 @@
 /**
  * @file VulkanContext.cpp
- * @brief Implementation of VulkanContext: Vulkan instance, device and queue setup.
+ * @brief Implementation of VulkanContext: Vulkan instance, device and queue bootstrap.
  *
- * This is the foundational module of the renderer. Every other module (SwapChain,
- * Pipeline, Renderer, Mesh, Material) depends on the handles created here.
+ * ## Reading guide
+ * This file is deliberately linear — read init() top to bottom and you will
+ * see exactly the sequence every Vulkan application must perform before it
+ * can draw a single pixel.  Each stage has a comment block explaining *why*
+ * it exists and what would break if you skipped it or reordered it.
  *
- * The init() function follows a strict 5-stage sequence using vk-bootstrap to
- * handle the boilerplate of Vulkan initialisation. Each stage depends on the
- * one before it, so the order cannot be changed.
- *
- * The destroy() function tears everything down in the exact reverse order,
- * which is a hard requirement of the Vulkan spec (child objects must be
- * destroyed before their parents).
+ * We use **vk-bootstrap** (github.com/charles-lunarg/vk-bootstrap) to handle
+ * the query-then-select boilerplate (enumerating GPUs, checking extensions,
+ * etc.).  Without it, each stage would require 30–80 lines of setup code.
+ * vk-bootstrap does not hide anything from us — it just automates the grunt
+ * work and gives us the raw Vulkan handles at the end.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-04-02
- *
- * @see VulkanContext.h for the class interface and member documentation.
- * @see https://github.com/charles-lunarg/vk-bootstrap for the vk-bootstrap API.
+ * @see    VulkanContext.h for the class interface and ownership rules.
+ * @see    https://github.com/charles-lunarg/vk-bootstrap
  */
 
 #include "VulkanContext.h"
 
-#include <VkBootstrap.h>   // vk-bootstrap: handles instance, device and queue creation
-#include <GLFW/glfw3.h>    // GLFW: only used here for glfwCreateWindowSurface()
-#include <spdlog/spdlog.h> // spdlog: structured logging (replaces std::cout)
+#include <VkBootstrap.h>   // vk-bootstrap helper types (InstanceBuilder, etc.)
+#include <GLFW/glfw3.h>    // glfwGetRequiredInstanceExtensions, glfwCreateWindowSurface
+#include <spdlog/spdlog.h> // structured logging
+
+// =============================================================================
+// init()
+// =============================================================================
 
 /// @details
-/// Initialisation follows 5 sequential stages, each building on the last:
-///   1. Create VkInstance via vkb::InstanceBuilder
-///   2. Create VkSurfaceKHR via GLFW (needed before GPU selection)
-///   3. Select VkPhysicalDevice via vkb::PhysicalDeviceSelector
-///   4. Create VkDevice via vkb::DeviceBuilder
-///   5. Retrieve VkQueue + queue family index
+/// **Stage overview and dependency chain:**
+/// ```
+///  Instance  →  Surface  →  PhysicalDevice  →  Device  →  Queue
+/// ```
+/// Each arrow means "must exist before the next step".  Vulkan enforces this
+/// at runtime — calling out-of-order results in validation errors or crashes.
 ///
-/// If any stage fails, the function logs the error and returns false.
-/// All member handles default to VK_NULL_HANDLE, so destroy() is always
-/// safe to call regardless of where the failure occurred.
+/// **Why does Surface come before PhysicalDevice selection?**
+/// The physical device selector needs the surface to verify that the chosen
+/// GPU can actually *present* to this window (not all GPUs can present to
+/// every surface type).  Creating the surface first lets vk-bootstrap reject
+/// GPUs that support graphics but cannot present.
 bool VulkanContext::init(GLFWwindow* window)
 {
-    // ── Stage 1: Instance ──────────────────────────────────────────────
-    // The VkInstance is my application's connection to the Vulkan loader.
-    // vk-bootstrap's InstanceBuilder collects my requirements (API version,
-    // validation layers, debug messenger) and calls vkCreateInstance for me.
+    // ── Stage 1: Vulkan Instance ───────────────────────────────────────────
+    // The VkInstance is your application's registration with the Vulkan
+    // loader.  Think of it as opening a connection to the driver stack.
+    // Nothing else can be created until the instance exists.
+    //
+    // GLFW extensions: GLFW needs certain instance-level extensions to create
+    // a window surface.  On Linux these include VK_KHR_surface plus either
+    // VK_KHR_xcb_surface (X11) or VK_KHR_wayland_surface (Wayland).  On
+    // Windows it's VK_KHR_win32_surface.  GLFW tells us exactly which ones
+    // it needs via glfwGetRequiredInstanceExtensions — we must ask for them
+    // before building the instance, or surface creation will fail later.
+    uint32_t     glfwExtCount = 0;
+    const char** glfwExts     = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+    if (!glfwExts) {
+        spdlog::error("VulkanContext: glfwGetRequiredInstanceExtensions returned null — "
+                      "is a Vulkan-capable display server (X11/Wayland) running?");
+        return false;
+    }
+
     vkb::InstanceBuilder builder;
     auto instResult = builder
         .set_app_name("FYP Vulkan Renderer")
-        .require_api_version(1, 3, 0)
-        .request_validation_layers()
-        .use_default_debug_messenger()
+        .require_api_version(1, 3, 0)       // Refuse GPUs/drivers older than Vulkan 1.3
+        .request_validation_layers()         // Enable Khronos validation (debug only)
+        .use_default_debug_messenger()       // Print validation errors to stderr
+        .enable_extensions(                  // Add GLFW's required windowing extensions
+            std::vector<const char*>(glfwExts, glfwExts + glfwExtCount))
         .build();
 
-    // vk-bootstrap returns a Result type. If it converted to false,
-    // something went wrong (e.g. Vulkan 1.3 not supported on this machine).
     if (!instResult) {
         spdlog::error("Failed to create Vulkan instance: {}", instResult.error().message());
         return false;
     }
 
-    // I store the full vkb::Instance as a local because Stage 3's
-    // PhysicalDeviceSelector needs the vkb wrapper, not just the raw handle.
+    // vkb::Instance wraps the raw handle plus the debug messenger.
+    // We store both so destroy() can clean them up individually.
     vkb::Instance vkbInstance = instResult.value();
     m_instance      = vkbInstance.instance;
     m_debugMessenger = vkbInstance.debug_messenger;
 
-    // ── Stage 2: Surface ───────────────────────────────────────────────
-    // The surface is the bridge between Vulkan and my GLFW window. Under
-    // the hood this calls the platform-specific function (vkCreateXlibSurfaceKHR
-    // on my Arch machine, vkCreateWin32SurfaceKHR on the DMU lab PCs).
+    // ── Stage 2: Window Surface ────────────────────────────────────────────
+    // VkSurfaceKHR is an abstract, platform-neutral handle for an OS window
+    // that Vulkan can render into.  Under the hood, GLFW calls the correct
+    // platform-specific function:
+    //   Linux X11    → vkCreateXlibSurfaceKHR / vkCreateXcbSurfaceKHR
+    //   Linux Wayland → vkCreateWaylandSurfaceKHR
+    //   Windows      → vkCreateWin32SurfaceKHR
     //
-    // This MUST happen before physical device selection. vk-bootstrap needs
-    // the surface to verify the chosen GPU can actually present to my window.
+    // We create the surface at this stage — before GPU selection — so that
+    // the physical device selector can verify presentation support.
     if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) != VK_SUCCESS) {
         spdlog::error("Failed to create window surface");
         return false;
     }
 
-    // ── Stage 3: Physical Device ───────────────────────────────────────
-    // Here I tell vk-bootstrap which GPU features my renderer needs.
-    // It queries every GPU on the system and rejects any that don't meet
-    // these requirements. The features live in two separate structs because
-    // they were promoted to core in different Vulkan versions (1.2 and 1.3).
-
-    // Vulkan 1.3 features (the core of my renderer's architecture):
-    //   dynamicRendering: lets me describe render attachments inline instead
-    //                     of pre-baking VkRenderPass objects (the modern approach)
-    //   synchronization2: cleaner barrier API for image layout transitions
+    // ── Stage 3: Physical Device Selection ────────────────────────────────
+    // A VkPhysicalDevice is a descriptor for one GPU in the system.  We do
+    // not create or destroy it — the driver owns it and it becomes invalid
+    // when the instance is destroyed.
+    //
+    // We enumerate all available GPUs and select the best one that meets
+    // our minimum requirements.  The required features are declared in two
+    // structs because they were promoted to core in different Vulkan versions:
+    //
+    //   VkPhysicalDeviceVulkan13Features:
+    //   - dynamicRendering  → lets us record render commands without pre-baking
+    //                         a VkRenderPass.  This is the modern approach used
+    //                         throughout this renderer.
+    //   - synchronization2  → cleaner image layout barrier API with granular
+    //                         pipeline stage masks (VkImageMemoryBarrier2).
+    //
+    //   VkPhysicalDeviceVulkan12Features:
+    //   - bufferDeviceAddress → lets GPU shaders access buffers via raw 64-bit
+    //                           addresses.  Needed for Gaussian Splatting (M6).
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
     };
     features13.dynamicRendering = VK_TRUE;
     features13.synchronization2 = VK_TRUE;
 
-    // Vulkan 1.2 features:
-    //   bufferDeviceAddress: lets shaders access buffers via raw GPU pointers.
-    //                        I'll need this for the Gaussian Splatting milestone (M6).
     VkPhysicalDeviceVulkan12Features features12{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
     };
     features12.bufferDeviceAddress = VK_TRUE;
 
-    // The selector takes the vkb::Instance AND my surface so it can check
-    // both feature support and presentation support for each GPU.
+    // PhysicalDeviceSelector needs both the instance wrapper (to iterate GPUs)
+    // and the surface (to test presentation support on each candidate).
     vkb::PhysicalDeviceSelector selector(vkbInstance, m_surface);
     auto physResult = selector
         .set_minimum_version(1, 3)
         .set_required_features_13(features13)
         .set_required_features_12(features12)
-        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete) // prefer a dGPU over iGPU
         .select();
 
     if (!physResult) {
@@ -115,20 +145,17 @@ bool VulkanContext::init(GLFWwindow* window)
         return false;
     }
 
-    // I store the vkb::PhysicalDevice locally because Stage 4's
-    // DeviceBuilder needs the full wrapper to read the required features.
     vkb::PhysicalDevice vkbPhysicalDevice = physResult.value();
     m_physicalDevice = vkbPhysicalDevice.physical_device;
     spdlog::info("Selected GPU: {}", vkbPhysicalDevice.name);
 
-    // ── Stage 4: Logical Device ────────────────────────────────────────
-    // The logical device is my working connection to the GPU. Every Vulkan
-    // object I create from here on (buffers, pipelines, command pools) goes
-    // through this device handle.
+    // ── Stage 4: Logical Device ────────────────────────────────────────────
+    // The VkDevice is your working connection to the selected GPU.  It is the
+    // handle you pass to vkCreateBuffer, vkCreatePipeline, etc.
     //
-    // DeviceBuilder reads the features I required in Stage 3 and
-    // automatically enables them, so I don't need to re-specify anything.
-    // It also enables VK_KHR_swapchain since I provided a surface.
+    // DeviceBuilder reads the feature requirements declared in Stage 3 and
+    // re-enables them on the device automatically — no need to repeat them
+    // here.  It also enables VK_KHR_swapchain because we passed a surface.
     vkb::DeviceBuilder deviceBuilder(vkbPhysicalDevice);
     auto devResult = deviceBuilder.build();
 
@@ -140,10 +167,15 @@ bool VulkanContext::init(GLFWwindow* window)
     vkb::Device vkbDevice = devResult.value();
     m_device = vkbDevice.device;
 
-    // ── Stage 5: Graphics Queue ────────────────────────────────────────
-    // Queues are how I submit work to the GPU. I need a graphics queue
-    // (for rendering) and its family index (for creating a command pool
-    // in Renderer later). The GPU processes submitted commands asynchronously.
+    // ── Stage 5: Graphics Queue ────────────────────────────────────────────
+    // A VkQueue is a submission channel on the GPU.  We need the graphics
+    // queue — the one that accepts draw commands — and its family index.
+    //
+    // The queue itself is not created (the driver creates queues when the
+    // device is created); we just retrieve a handle to it.
+    //
+    // We store the family index separately because Renderer needs it to
+    // create a VkCommandPool (pools are tied to a specific queue family).
     auto queueResult = vkbDevice.get_queue(vkb::QueueType::graphics);
     if (!queueResult) {
         spdlog::error("Failed to get graphics queue: {}", queueResult.error().message());
@@ -162,36 +194,49 @@ bool VulkanContext::init(GLFWwindow* window)
     return true;
 }
 
+// =============================================================================
+// destroy()
+// =============================================================================
+
 /// @details
-/// Teardown follows the exact reverse of the creation order in init().
-/// Each handle is guarded with a VK_NULL_HANDLE check so this function
-/// is safe to call even if init() failed partway through or was never called.
+/// **Why reverse order?**
+/// Vulkan is strict about ownership: you must destroy an object before the
+/// parent it was created from.  Violating this triggers a validation error
+/// ("object X destroyed while still in use").
 ///
-/// VkPhysicalDevice and VkQueue are NOT destroyed here. They are not owned
-/// handles. They are just references retrieved from the driver and become
-/// invalid automatically when the instance/device they belong to is destroyed.
+/// The reverse of init() is:
+///   Device → Surface → DebugMessenger → Instance
+///
+/// `VkPhysicalDevice` and `VkQueue` are *not* destroyed here — they are
+/// driver-owned references that become invalid automatically when the device
+/// and instance they belong to are destroyed.
 void VulkanContext::destroy()
 {
-    // 1. Logical device: must go first, before the instance it was created from.
+    // 1. Logical device: must go first.  All VkBuffers, VkImages, VkPipelines,
+    //    etc. that were created from this device become invalid after this call.
     if (m_device != VK_NULL_HANDLE) {
         vkDestroyDevice(m_device, nullptr);
         m_device = VK_NULL_HANDLE;
     }
 
-    // 2. Surface: owned by the instance, must be destroyed before the instance.
+    // 2. Surface: owned by the instance, so it must be destroyed before the
+    //    instance.  If we destroyed the instance first, this would be a use-
+    //    after-free on the instance handle.
     if (m_surface != VK_NULL_HANDLE) {
         vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
         m_surface = VK_NULL_HANDLE;
     }
 
-    // 3. Debug messenger: also owned by the instance. I use vk-bootstrap's
-    //    helper instead of manually loading the destroy function pointer.
+    // 3. Debug messenger: also instance-owned.  We use vk-bootstrap's helper
+    //    because the destroy function pointer must be loaded dynamically from
+    //    the instance (it's an extension function, not a core Vulkan symbol).
     if (m_debugMessenger != VK_NULL_HANDLE) {
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         m_debugMessenger = VK_NULL_HANDLE;
     }
 
-    // 4. Instance: last to go, everything above depended on it.
+    // 4. Instance: the very last object to go.  Once this is destroyed, no
+    //    Vulkan function calls are valid on any object created from this instance.
     if (m_instance != VK_NULL_HANDLE) {
         vkDestroyInstance(m_instance, nullptr);
         m_instance = VK_NULL_HANDLE;

@@ -1,13 +1,42 @@
 /**
  * @file Renderer.h
- * @brief Top-level renderer - per-frame record, submit and present loop.
+ * @brief Per-frame command recording, GPU synchronisation and present loop.
  *
- * Renderer is the main entry point for the render loop.  It owns the
- * per-frame synchronisation objects (semaphores, fences), the command
- * pool and command buffers, and orchestrates calls to SwapChain and
- * Pipeline on each frame.
+ * ## Renderer's role in the architecture
+ * Renderer is the "engine room" — it owns all the GPU objects that drive the
+ * per-frame render loop.  SwapChain provides the images, Pipeline provides
+ * the shader program, and Renderer does the work of:
+ *  1. Waiting until the GPU is ready for new work.
+ *  2. Acquiring the next swapchain image.
+ *  3. Recording draw commands into a command buffer.
+ *  4. Submitting those commands to the GPU.
+ *  5. Presenting the finished image to the display.
  *
- * @author Mohamed Deeq Mohamed
+ * ## Double-buffering
+ * `MAX_FRAMES_IN_FLIGHT = 2` means the CPU can be recording frame N+1 while
+ * the GPU is still executing frame N.  Each "frame slot" has its own command
+ * buffer, imageAvailable semaphore and in-flight fence so the two frames do
+ * not interfere with each other.
+ *
+ * ## Synchronisation primitives
+ * Vulkan has two binary sync types.  Knowing which to use where is critical:
+ *
+ * | Primitive        | Who waits?  | Who signals? | Use case here                 |
+ * |------------------|-------------|--------------|-------------------------------|
+ * | `VkSemaphore`    | GPU only    | GPU only     | GPU-GPU ordering (acquire→draw, draw→present) |
+ * | `VkFence`        | CPU (`vkWaitForFences`) | GPU | CPU blocks until GPU frame is done |
+ *
+ * ## Semaphore indexing (important)
+ * `imageAvailableSemaphores` are indexed by **frame slot** (`m_currentFrame`).
+ * `renderFinishedSemaphores` are indexed by **swapchain image index** (`imageIndex`).
+ *
+ * The reason for the split: if both were indexed by frame slot, a semaphore
+ * could be reused while the presentation engine still holds it — this fires
+ * `VUID-vkQueueSubmit-pSignalSemaphores-00067`.  Indexing `renderFinished` by
+ * `imageIndex` is safe because the swapchain only re-issues image N after its
+ * previous presentation is complete, guaranteeing the semaphore is free.
+ *
+ * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-03-27
  */
 
@@ -16,100 +45,178 @@
 
 #include <vulkan/vulkan.h>
 #include <cstdint>
+#include <vector>
 
 class VulkanContext;
 class SwapChain;
 class Pipeline;
 
-/// @brief Maximum number of frames processed concurrently (double-buffered).
+/// @brief Number of frames the CPU can be ahead of the GPU.
+/// 2 = double-buffering: GPU works on frame N while CPU records frame N+1.
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 /**
  * @class Renderer
  * @brief Owns per-frame GPU resources and drives the main render loop.
  *
- * One Renderer instance is created after VulkanContext and SwapChain are
- * initialised.  Call drawFrame() once per application tick inside the
- * main loop.  Call waitIdle() before destroying any resources.
+ * ## Ownership model
+ * - **Owns:** `VkCommandPool`, `VkCommandBuffer[]`, `VkSemaphore[]` (both
+ *   arrays), `VkFence[]`.
+ * - **Does NOT own:** swapchain images, pipeline, VulkanContext handles.
+ *
+ * ## Dependency
+ * Renderer must be initialised after both VulkanContext and SwapChain.  It
+ * reads `swap.imageCount()` to size the renderFinished semaphore array.
+ *
+ * ## Usage
+ * @code
+ *   Renderer renderer;
+ *   renderer.init(ctx, swap);
+ *   while (!done) {
+ *       if (!renderer.drawFrame(ctx, swap, pipeline)) {
+ *           renderer.waitIdle(ctx);
+ *           swap.rebuild(ctx, w, h);
+ *           pipeline.destroy(ctx);
+ *           pipeline.init(ctx, ...);
+ *       }
+ *   }
+ *   renderer.waitIdle(ctx);
+ *   renderer.destroy(ctx);
+ * @endcode
  */
 class Renderer
 {
 public:
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Lifecycle
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     /**
-     * @brief Allocates command pool, command buffers and sync objects.
+     * @brief Creates the command pool, command buffers and all sync objects.
      *
-     * @param  ctx   Initialised VulkanContext.
-     * @param  swap  Initialised SwapChain (frame count is read from it).
+     * **Command pool:**
+     * Created with `VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT` so
+     * individual command buffers can be reset and re-recorded each frame
+     * without resetting the whole pool.
+     *
+     * **imageAvailable semaphores** (`MAX_FRAMES_IN_FLIGHT` of them):
+     * Passed to `vkAcquireNextImageKHR`.  The driver signals these when a
+     * swapchain image finishes being presented and is free to write into.
+     *
+     * **renderFinished semaphores** (`swap.imageCount()` of them):
+     * Signalled at queue submit; waited on at present.  One per swapchain
+     * image (not per frame slot) to avoid semaphore reuse while the
+     * presentation engine still holds a reference.
+     *
+     * **inFlight fences** (`MAX_FRAMES_IN_FLIGHT` of them):
+     * Created in the *signalled* state so the very first `vkWaitForFences`
+     * call on frame 0 returns immediately without blocking.
+     *
+     * @param  ctx   Fully initialised VulkanContext.
+     * @param  swap  Fully initialised SwapChain (imageCount() is read here).
      * @return true  on success.
-     * @return false if any Vulkan allocation fails.
+     * @return false if any Vulkan object creation fails.
      */
     bool init(const VulkanContext& ctx, const SwapChain& swap);
 
     /**
-     * @brief Destroys semaphores, fences, command buffers and the command pool.
+     * @brief Destroys all owned sync objects, command buffers and the pool.
+     *
+     * @note  Call `waitIdle()` before `destroy()` to ensure the GPU has
+     *        finished all in-flight work.  Destroying a semaphore or fence
+     *        while it is pending on the GPU is undefined behaviour.
+     *
      * @param ctx  The same VulkanContext passed to init().
      */
     void destroy(const VulkanContext& ctx);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Per-frame
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     /**
-     * @brief Records and submits a single frame, then queues presentation.
+     * @brief Records and submits one frame, then queues it for presentation.
      *
-     * Frame flow:
-     *  1. Wait for in-flight fence.
-     *  2. Acquire next swapchain image.
-     *  3. Begin command buffer recording.
-     *  4. Transition image layout (UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL).
-     *  5. Begin Dynamic Rendering pass (vkCmdBeginRenderingKHR).
-     *  6. Bind pipeline and draw.
-     *  7. End Dynamic Rendering pass.
-     *  8. Transition image layout (COLOR_ATTACHMENT_OPTIMAL -> PRESENT_SRC_KHR).
-     *  9. Submit command buffer.
-     * 10. Present.
+     * **Full 13-step frame sequence:**
      *
-     * @param  ctx      Initialised VulkanContext.
-     * @param  swap     Initialised SwapChain.
-     * @param  pipeline Compiled Pipeline.
-     * @return true     on success.
-     * @return false    on VK_ERROR_OUT_OF_DATE_KHR or other fatal errors.
+     *  1. `vkWaitForFences` — block the CPU until the GPU finishes the
+     *     previous use of this frame slot.
+     *  2. `acquireNextImage` — get the next swapchain image index; signal
+     *     `imageAvailableSemaphores[currentFrame]` when the image is free.
+     *  3. `vkResetFences` — reset the fence so it can be signalled again
+     *     at submit time.  Reset *after* a successful acquire (not before).
+     *  4. `vkResetCommandBuffer` + `vkBeginCommandBuffer` — clear the
+     *     previous frame's commands and start recording new ones.
+     *  5. **Barrier: UNDEFINED → COLOR_ATTACHMENT_OPTIMAL** — discard the
+     *     old image contents and transition the layout so the GPU can write
+     *     colour data into it.
+     *  6. `vkCmdBeginRendering` — start the Dynamic Rendering scope; declare
+     *     the colour attachment and its load/store operations.
+     *  7. `vkCmdSetViewport` + `vkCmdSetScissor` — set dynamic state to
+     *     match the current swapchain extent.
+     *  8. `vkCmdBindPipeline` + `vkCmdDraw` — bind the pipeline and emit
+     *     the draw call (3 vertices, 1 instance).
+     *  9. `vkCmdEndRendering` — close the Dynamic Rendering scope.
+     * 10. **Barrier: COLOR_ATTACHMENT_OPTIMAL → PRESENT_SRC_KHR** — transition
+     *     the image so the presentation engine can read it for display.
+     * 11. `vkEndCommandBuffer` — finalise the recording.
+     * 12. `vkQueueSubmit` — wait on `imageAvailable`, signal `renderFinished`
+     *     and the in-flight fence.
+     * 13. `vkQueuePresentKHR` — wait on `renderFinished`, then flip.
+     *
+     * @param  ctx      Fully initialised VulkanContext.
+     * @param  swap     Initialised SwapChain (images may be read this frame).
+     * @param  pipeline Compiled graphics pipeline.
+     * @return true     Frame submitted and queued for presentation successfully.
+     * @return false    Swapchain is out of date (`VK_ERROR_OUT_OF_DATE_KHR` or
+     *                  `VK_SUBOPTIMAL_KHR`) — caller must rebuild the swapchain
+     *                  and pipeline before the next frame.
      */
     bool drawFrame(const VulkanContext& ctx,
                    SwapChain&           swap,
                    const Pipeline&      pipeline);
 
     /**
-     * @brief Blocks until the GPU has finished all in-flight work.
+     * @brief Blocks until all queued GPU work has completed.
      *
-     * Must be called before destroying the SwapChain, Pipeline or any
-     * resource that a command buffer might still reference.
+     * Wraps `vkDeviceWaitIdle`.  Must be called before destroying any
+     * resource that an in-flight command buffer might still reference:
+     *  - Before `destroy()`.
+     *  - Before rebuilding the swapchain on window resize.
+     *  - Before rebuilding the pipeline on resize.
      *
      * @param ctx  Initialised VulkanContext.
      */
     void waitIdle(const VulkanContext& ctx);
 
 private:
-    VkCommandPool   m_commandPool = VK_NULL_HANDLE; ///< Pool for graphics command buffers.
+    // =========================================================================
+    // Owned handles
+    // =========================================================================
 
-    /// Per-frame command buffers (size = MAX_FRAMES_IN_FLIGHT).
+    /// Pool from which all command buffers are allocated.
+    /// `RESET_COMMAND_BUFFER_BIT` allows per-buffer reset each frame.
+    VkCommandPool m_commandPool = VK_NULL_HANDLE;
+
+    /// One primary command buffer per in-flight frame slot.
+    /// Reset and re-recorded every frame.
     VkCommandBuffer m_commandBuffers[MAX_FRAMES_IN_FLIGHT] = {};
 
-    /// Semaphore signalled when a swapchain image is available per frame.
-    VkSemaphore     m_imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
+    /// Signalled by the driver when swapchain image [i] is free to write into.
+    /// Indexed by frame slot (m_currentFrame); fence ensures reuse is safe.
+    VkSemaphore m_imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
 
-    /// Semaphore signalled when rendering is complete and image can be presented.
-    VkSemaphore     m_renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
+    /// Signalled at submit when rendering to image [i] is complete.
+    /// **Indexed by swapchain imageIndex** — one per image, not per frame slot.
+    /// See the file-level doc for the rationale behind this split indexing.
+    std::vector<VkSemaphore> m_renderFinishedSemaphores;
 
-    /// Fence used to throttle CPU ahead of GPU (one per in-flight frame).
-    VkFence         m_inFlightFences[MAX_FRAMES_IN_FLIGHT] = {};
+    /// CPU-side fence: blocks the CPU until the GPU finishes frame slot [i].
+    /// Starts in the signalled state so frame 0 doesn't block on the first wait.
+    VkFence m_inFlightFences[MAX_FRAMES_IN_FLIGHT] = {};
 
-    uint32_t        m_currentFrame = 0; ///< Frame index (0 ... MAX_FRAMES_IN_FLIGHT-1).
+    /// Which frame slot to use next (cycles 0 → 1 → 0 → …).
+    uint32_t m_currentFrame = 0;
 };
 
 #endif // FYP_VULKAN_RENDERER_RENDERER_H

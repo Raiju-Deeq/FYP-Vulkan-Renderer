@@ -1,27 +1,48 @@
 /**
  * @file main.cpp
- * @brief Application entry point - window creation, init sequence and main loop.
+ * @brief Application entry point — window creation, module init sequence and render loop.
  *
- * Wires together the four core modules in the order their dependencies require:
- *   VulkanContext → SwapChain → Pipeline → Renderer
+ * ## High-level flow
+ * ```
+ * glfwInit()
+ *   └─ Create window (GLFW_NO_API — no OpenGL context)
+ *       └─ VulkanContext::init()     → instance, GPU, device, queue
+ *           └─ SwapChain::init()     → swapchain images & views
+ *               └─ Pipeline::init()  → SPIR-V shaders & graphics pipeline
+ *                   └─ Renderer::init() → cmd buffers, semaphores, fences
+ *                       └─ Render loop (drawFrame each tick)
+ *                           └─ Teardown (reverse order)
+ * ```
  *
- * The main loop runs until the GLFW window is closed.  On each iteration it
- * polls window events and calls Renderer::drawFrame().  If drawFrame() returns
- * false (swapchain out of date after a window resize), the swapchain and
- * pipeline are rebuilt immediately before the next frame.
+ * ## Why GLFW_NO_API?
+ * GLFW defaults to creating an OpenGL context alongside the window.  We drive
+ * Vulkan ourselves so we must suppress this with `GLFW_CLIENT_API = GLFW_NO_API`.
+ * Forgetting this hint causes GLFW to error on `glfwCreateWindow` when there
+ * is no OpenGL ICD available, or silently creates an incompatible context.
  *
- * Teardown happens in strict reverse construction order so every child object
- * is destroyed before the parent it depends on.
+ * ## Window resize handling
+ * When the OS window is resized:
+ *  1. `drawFrame()` returns false (swapchain `VK_ERROR_OUT_OF_DATE_KHR`).
+ *  2. `renderer.waitIdle()` ensures the GPU finishes all in-flight work.
+ *  3. `swap.rebuild()` tears down and recreates the swapchain at the new size.
+ *  4. `pipeline` is also recreated because the colour attachment format *could*
+ *     have changed (rare, but required for correctness).
+ *  5. The render loop continues from the next `drawFrame()`.
  *
- * @note  Shader .spv paths are relative to the working directory.  Run the
- *        executable from the project root so "shaders/triangle.vert.spv" resolves
- *        correctly (CMake compiles shaders to ${sourceDir}/shaders/).
+ * ## Minimisation handling
+ * A minimised window has a framebuffer size of 0×0.  Submitting a present with
+ * zero extent is invalid.  The loop skips `drawFrame()` and calls
+ * `glfwWaitEvents()` to avoid burning CPU while minimised.
+ *
+ * @note  Shader `.spv` paths are relative to the working directory.  CMake
+ *        copies compiled shaders to the build output directory at build time,
+ *        so running the executable from the build directory resolves correctly.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-04-10
  */
 
-#define GLFW_INCLUDE_VULKAN
+#define GLFW_INCLUDE_VULKAN   // Makes glfw3.h pull in vulkan.h as well.
 #include <GLFW/glfw3.h>
 
 #include "VulkanContext.h"
@@ -32,23 +53,33 @@
 #include <spdlog/spdlog.h>
 #include <cstdlib>
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// =============================================================================
+// Configuration constants
+// =============================================================================
 
-static constexpr int  WINDOW_WIDTH  = 1280;
-static constexpr int  WINDOW_HEIGHT = 720;
-static constexpr char WINDOW_TITLE[] = "FYP Vulkan Renderer — M1 Triangle";
+static constexpr int  WINDOW_WIDTH  = 1280;       ///< Initial window width in pixels.
+static constexpr int  WINDOW_HEIGHT = 720;         ///< Initial window height in pixels.
+static constexpr char WINDOW_TITLE[] = "FYP Vulkan Renderer — M1 Triangle"; ///< OS title bar text.
 
-// Paths are relative to the working directory (project root).
-// CMake compiles shaders/triangle.vert → shaders/triangle.vert.spv automatically.
+/// Path to the compiled vertex shader, relative to the working directory.
+/// CMake compiles shaders/triangle.vert → shaders/triangle.vert.spv and
+/// copies the result to the build output directory automatically.
 static constexpr char VERT_SPV[] = "shaders/triangle.vert.spv";
+
+/// Path to the compiled fragment shader.
 static constexpr char FRAG_SPV[] = "shaders/triangle.frag.spv";
 
-// ─── Entry point ──────────────────────────────────────────────────────────────
+// =============================================================================
+// main()
+// =============================================================================
 
 /**
  * @brief Application entry point.
  *
- * @return EXIT_SUCCESS (0) on clean shutdown.
+ * Follows a strict init → loop → teardown pattern.  Every early-exit path
+ * cleans up the resources that had been successfully created before the failure.
+ *
+ * @return EXIT_SUCCESS (0) on a clean, user-initiated shutdown.
  * @return EXIT_FAILURE (1) if any initialisation step fails.
  */
 int main()
@@ -56,15 +87,18 @@ int main()
     spdlog::set_level(spdlog::level::info);
     spdlog::info("=== FYP Vulkan Renderer — Milestone 1 ===");
 
-    // ── GLFW ──────────────────────────────────────────────────────────────
+    // ── GLFW init ─────────────────────────────────────────────────────────
+    // glfwInit() loads the GLFW library and initialises the event system.
+    // It must be called before any other GLFW function.
     if (!glfwInit()) {
         spdlog::error("main: glfwInit failed");
         return EXIT_FAILURE;
     }
 
-    // GLFW_NO_API tells GLFW not to create an OpenGL context — we drive Vulkan
-    // ourselves.  GLFW_RESIZABLE enables OS-level window resize; we handle the
-    // resulting swapchain rebuild in the loop below.
+    // GLFW_NO_API: do not create an OpenGL context.  Vulkan manages its own
+    // rendering — we don't want GLFW to create an incompatible GL context.
+    // GLFW_RESIZABLE: allow the user to drag-resize the window; we handle the
+    // resulting swapchain rebuild in the render loop below.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
@@ -77,8 +111,9 @@ int main()
     }
 
     // ── VulkanContext ─────────────────────────────────────────────────────
-    // Creates the VkInstance (with validation layers), selects a GPU, creates
-    // the VkDevice and retrieves the graphics queue.
+    // Creates: VkInstance (with validation layers) → VkSurfaceKHR →
+    //          VkPhysicalDevice → VkDevice → VkQueue.
+    // Everything else depends on this completing successfully.
     VulkanContext ctx;
     if (!ctx.init(window)) {
         glfwDestroyWindow(window);
@@ -87,8 +122,9 @@ int main()
     }
 
     // ── SwapChain ─────────────────────────────────────────────────────────
-    // Use the framebuffer size (physical pixels), not the window size (logical
-    // pixels), to handle high-DPI displays correctly.
+    // We query the *framebuffer* size (physical pixels) rather than the window
+    // size (logical/DPI-scaled pixels).  On high-DPI displays these differ.
+    // Vulkan works in physical pixels so we must pass the framebuffer size.
     int fbWidth = 0, fbHeight = 0;
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
 
@@ -102,9 +138,9 @@ int main()
     }
 
     // ── Pipeline ──────────────────────────────────────────────────────────
-    // Loads SPIR-V shaders and builds the Dynamic Rendering graphics pipeline.
-    // The colour format must match the swapchain so the pipeline targets the
-    // correct attachment format.
+    // Loads the triangle SPIR-V shaders and compiles the graphics pipeline.
+    // The swapchain colour format is passed so the pipeline's
+    // VkPipelineRenderingCreateInfo matches the actual attachment format.
     Pipeline pipeline;
     if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
         swap.destroy(ctx);
@@ -115,8 +151,9 @@ int main()
     }
 
     // ── Renderer ──────────────────────────────────────────────────────────
-    // Creates the command pool, command buffers, semaphores and fences for the
-    // double-buffered render loop.
+    // Creates the command pool, double-buffered command buffers, imageAvailable
+    // semaphores (×MAX_FRAMES_IN_FLIGHT), renderFinished semaphores
+    // (×swap.imageCount()), and inFlight fences (×MAX_FRAMES_IN_FLIGHT).
     Renderer renderer;
     if (!renderer.init(ctx, swap)) {
         pipeline.destroy(ctx);
@@ -131,29 +168,35 @@ int main()
 
     // ── Render loop ───────────────────────────────────────────────────────
     while (!glfwWindowShouldClose(window)) {
+        // Poll for OS events (keyboard, mouse, window resize/close requests).
+        // Without this call the window appears frozen.
         glfwPollEvents();
 
-        // Skip rendering while the window is minimised (framebuffer size = 0).
-        // Attempting to acquire/present with a zero-extent swapchain is invalid.
+        // Skip rendering while minimised.  A zero-size framebuffer means the
+        // swapchain extent would be 0×0, which is an invalid argument to the
+        // Vulkan present call.  We wait for an event (glfwWaitEvents) instead
+        // of spinning to avoid burning CPU while the window is minimised.
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         if (fbWidth == 0 || fbHeight == 0) {
             continue;
         }
 
         if (!renderer.drawFrame(ctx, swap, pipeline)) {
-            // drawFrame returns false on VK_ERROR_OUT_OF_DATE_KHR (window resize)
-            // or VK_SUBOPTIMAL_KHR.  Wait for all in-flight work to finish before
-            // rebuilding so we don't destroy resources the GPU is still reading.
+            // drawFrame returns false when the swapchain is out of date.
+            // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
+            // We must wait for all in-flight GPU work to finish before
+            // destroying/recreating swapchain resources — the GPU may still be
+            // reading from images that are about to be destroyed.
             renderer.waitIdle(ctx);
 
+            // Wait until the window is a non-zero size (e.g. user un-minimises).
             glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
             while (fbWidth == 0 || fbHeight == 0) {
-                // Window is minimised — wait for a resize event before rebuilding.
                 glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-                glfwWaitEvents();
+                glfwWaitEvents(); // sleep until an OS event wakes us
             }
 
-            // Rebuild swapchain for the new window size.
+            // Rebuild the swapchain at the new size.
             if (!swap.rebuild(ctx, static_cast<uint32_t>(fbWidth),
                                     static_cast<uint32_t>(fbHeight))) {
                 spdlog::error("main: swapchain rebuild failed — exiting");
@@ -161,7 +204,9 @@ int main()
             }
 
             // The pipeline must also be recreated because the colour attachment
-            // format could have changed (rare but required for correctness).
+            // format *could* have changed after a swapchain rebuild.  In practice
+            // the format rarely changes, but the spec does not guarantee it stays
+            // the same, so rebuilding is the correct approach.
             pipeline.destroy(ctx);
             if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
                 spdlog::error("main: pipeline rebuild failed — exiting");
@@ -173,8 +218,11 @@ int main()
     spdlog::info("main: window closed — shutting down");
 
     // ── Teardown (strict reverse construction order) ───────────────────────
-    // Wait for the GPU to finish all in-flight work before touching any handle.
+    // Wait for the GPU to drain all in-flight frames before touching any handle.
+    // Destroying a resource the GPU is still reading is undefined behaviour.
     renderer.waitIdle(ctx);
+
+    // Destroy in reverse init order: Renderer → Pipeline → SwapChain → Context.
     renderer.destroy(ctx);
     pipeline.destroy(ctx);
     swap.destroy(ctx);

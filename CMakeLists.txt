@@ -21,6 +21,28 @@ set(SOURCES
 add_executable(vulkan-renderer ${SOURCES})
 
 # ── vcpkg dependencies ───────────────────────────────────────────────────────
+# On Linux the system Vulkan loader must be used instead of vcpkg's bundled copy.
+# vcpkg's libvulkan.so.1 is a stub that has no ICD driver paths configured, so
+# GLFW's glfwGetRequiredInstanceExtensions() returns null and instance creation
+# fails with windowing_extensions_not_present.  The system loader (installed by
+# vulkan-icd-loader) reads /usr/share/vulkan/icd.d/ and finds the GPU drivers.
+# Setting Vulkan_LIBRARY in the cache before find_package() overrides vcpkg.
+if(UNIX AND NOT APPLE)
+    find_library(_vulkan_system_lib NAMES vulkan
+        PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH
+    )
+    if(_vulkan_system_lib)
+        set(Vulkan_LIBRARY "${_vulkan_system_lib}" CACHE FILEPATH
+            "System Vulkan loader (overrides vcpkg stub on Linux)" FORCE)
+        message(STATUS "Linux: using system Vulkan loader: ${_vulkan_system_lib}")
+    else()
+        message(WARNING
+            "System Vulkan loader not found — install vulkan-icd-loader (Arch: pacman -S vulkan-icd-loader)")
+    endif()
+endif()
+
 find_package(Vulkan REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)

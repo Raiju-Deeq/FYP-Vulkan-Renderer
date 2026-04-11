@@ -1,27 +1,42 @@
 /**
  * @file Renderer.cpp
- * @brief Implementation of Renderer - per-frame command recording and GPU submission.
+ * @brief Implementation of Renderer — per-frame command recording and GPU submission.
  *
- * This module drives the core Vulkan render loop for Milestone 1.  Every frame
- * follows the same ten-step sequence documented on drawFrame().  The key design
- * points are:
+ * ## Reading guide
+ * The heart of this file is `drawFrame()`.  Read it top-to-bottom alongside
+ * the step numbers in the header doc and you will see the complete Vulkan
+ * frame lifecycle.  Every step has a comment explaining *why* it exists and
+ * what would go wrong if you removed it.
  *
- *   - Double-buffering (MAX_FRAMES_IN_FLIGHT = 2): while the GPU renders frame N,
- *     the CPU is recording frame N+1.  A per-slot fence throttles how far ahead
- *     the CPU can run.
+ * ## Double-buffering mental model
+ * Imagine two "slots" (frame 0 and frame 1).  Each slot has its own command
+ * buffer, semaphores and fence.  While the GPU executes slot 0, the CPU is
+ * recording into slot 1's command buffer.  The fence for slot 0 prevents the
+ * CPU from reusing slot 0's resources until the GPU finishes.
  *
- *   - Dynamic Rendering (Vulkan 1.3): vkCmdBeginRendering / vkCmdEndRendering
- *     replace the old VkRenderPass / VkFramebuffer pattern.  The attachment is
- *     described inline per command buffer, not pre-baked.
+ * ```
+ * Frame:    0     1     2     3     4 ...
+ * CPU slot: 0     1     0     1     0 ...  (m_currentFrame cycles 0→1→0→...)
+ * GPU:         [0]   [1]   [2]   [3]   ...
+ * ```
  *
- *   - synchronization2: all image layout transitions use VkImageMemoryBarrier2
- *     and vkCmdPipelineBarrier2.  This gives finer-grained pipeline stage masks
- *     and clearer barrier semantics than the original barrier API.
+ * ## Image layout transitions
+ * Vulkan images have a *layout* — an internal arrangement of pixels in memory
+ * that is optimised for a specific purpose:
+ *
+ * | Layout                            | Optimal for           |
+ * |-----------------------------------|-----------------------|
+ * | `VK_IMAGE_LAYOUT_UNDEFINED`       | "Don't care"          |
+ * | `VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL` | Writing from shaders |
+ * | `VK_IMAGE_LAYOUT_PRESENT_SRC_KHR` | Presentation engine   |
+ *
+ * Transitioning between layouts requires a `VkImageMemoryBarrier2` — it both
+ * changes the layout and inserts a memory barrier so previous writes are
+ * visible to subsequent reads.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-04-10
- *
- * @see Renderer.h for the class interface.
+ * @see    Renderer.h for the class interface and full step-by-step drawFrame docs.
  */
 
 #include "Renderer.h"
@@ -31,23 +46,27 @@
 
 #include <spdlog/spdlog.h>
 
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
+// =============================================================================
+// init()
+// =============================================================================
 
 /// @details
-/// Creates one command pool for the graphics queue family, then allocates
-/// MAX_FRAMES_IN_FLIGHT command buffers from it.  Per-frame synchronisation
-/// objects are created next:
-///   - imageAvailableSemaphore: GPU signals this when a swapchain image is ready
-///                              to be written to (after presentation is done).
-///   - renderFinishedSemaphore: GPU signals this when the frame is fully rendered
-///                              and the image is ready to be presented.
-///   - inFlightFence:           starts in the SIGNALLED state so the first wait
-///                              in drawFrame() returns immediately without blocking.
-bool Renderer::init(const VulkanContext& ctx, const SwapChain& /*swap*/)
+/// **Why RESET_COMMAND_BUFFER_BIT on the pool?**
+/// Without this flag, command buffers from the pool can only be reset by
+/// resetting the *entire* pool — all buffers at once.  The flag lets us call
+/// `vkResetCommandBuffer` per-buffer each frame, which is more flexible.
+///
+/// **Why do fences start signalled?**
+/// `drawFrame()` calls `vkWaitForFences` at the *start* of each frame.  On
+/// the very first frame, no GPU work has been submitted yet.  If fence[0]
+/// started unsignalled, the CPU would block forever waiting for GPU work that
+/// was never submitted.  Starting signalled means the first wait returns
+/// immediately, and the fence is reset only after a successful acquire.
+bool Renderer::init(const VulkanContext& ctx, const SwapChain& swap)
 {
     // ── Command pool ──────────────────────────────────────────────────────
-    // RESET_COMMAND_BUFFER_BIT lets us call vkResetCommandBuffer() per frame
-    // instead of resetting the whole pool.
+    // The pool is tied to one queue family.  All command buffers allocated
+    // from it must be submitted to queues in that same family.
     VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = ctx.graphicsQueueFamily();
@@ -58,7 +77,9 @@ bool Renderer::init(const VulkanContext& ctx, const SwapChain& /*swap*/)
     }
 
     // ── Command buffers ───────────────────────────────────────────────────
-    // One PRIMARY command buffer per in-flight frame slot.
+    // Allocate MAX_FRAMES_IN_FLIGHT primary command buffers in one call.
+    // PRIMARY means these buffers can be submitted directly to a queue.
+    // (SECONDARY buffers can only be called from primary ones — not used here.)
     VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocInfo.commandPool        = m_commandPool;
     allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -71,16 +92,15 @@ bool Renderer::init(const VulkanContext& ctx, const SwapChain& /*swap*/)
 
     // ── Per-frame sync objects ────────────────────────────────────────────
     VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    // VK_FENCE_CREATE_SIGNALED_BIT: fence starts signalled so the first
-    // vkWaitForFences() call in drawFrame() returns immediately.
+
+    // SIGNALED_BIT: fence starts signalled so the first vkWaitForFences in
+    // drawFrame() returns immediately (see reasoning above).
     VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         if (vkCreateSemaphore(ctx.device(), &semInfo, nullptr,
                               &m_imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(ctx.device(), &semInfo, nullptr,
-                              &m_renderFinishedSemaphores[i]) != VK_SUCCESS ||
             vkCreateFence(ctx.device(), &fenceInfo, nullptr,
                           &m_inFlightFences[i]) != VK_SUCCESS)
         {
@@ -89,21 +109,62 @@ bool Renderer::init(const VulkanContext& ctx, const SwapChain& /*swap*/)
         }
     }
 
-    spdlog::info("Renderer: initialised ({} frames in flight)", MAX_FRAMES_IN_FLIGHT);
+    // ── Per-image renderFinished semaphores ───────────────────────────────
+    // WHY per-image instead of per-frame?
+    //
+    // Using per-frame indexing (renderFinished[currentFrame]) can trigger
+    // VUID-vkQueueSubmit-pSignalSemaphores-00067.  Here's why:
+    //
+    // With MAX_FRAMES_IN_FLIGHT=2 and 4 swapchain images, the CPU can cycle
+    // back to frame slot 0 while the presentation engine still internally
+    // references renderFinished[0] from three frames ago.  The fence ensures
+    // the GPU rendering is done, but doesn't guarantee the presentation engine
+    // has fully released the semaphore.
+    //
+    // Using imageIndex guarantees safety: the swapchain only re-issues image N
+    // after its previous presentation is complete.  So renderFinished[N] is
+    // always free by the time image N is re-acquired.
+    const uint32_t imageCount = swap.imageCount();
+    m_renderFinishedSemaphores.resize(imageCount, VK_NULL_HANDLE);
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        if (vkCreateSemaphore(ctx.device(), &semInfo, nullptr,
+                              &m_renderFinishedSemaphores[i]) != VK_SUCCESS)
+        {
+            spdlog::error("Renderer: failed to create renderFinished semaphore {}", i);
+            return false;
+        }
+    }
+
+    spdlog::info("Renderer: initialised ({} frames in flight, {} swapchain images)",
+                 MAX_FRAMES_IN_FLIGHT, imageCount);
     return true;
 }
 
+// =============================================================================
+// destroy()
+// =============================================================================
+
 /// @details
-/// Destroys sync objects first (semaphores + fences), then frees the command
-/// buffers, then destroys the command pool.  Each handle is guarded with a
-/// null-check so this is safe after a partial init() or multiple calls.
+/// Semaphores and fences are destroyed before the command pool.  Destroying
+/// the pool also implicitly frees all command buffers allocated from it, but
+/// we call `vkFreeCommandBuffers` explicitly first to keep the ownership chain
+/// clear and avoid confusion if this is extended later.
+///
+/// Always call `waitIdle()` before `destroy()` — if the GPU is mid-frame when
+/// we destroy a semaphore, the behaviour is undefined.
 void Renderer::destroy(const VulkanContext& ctx)
 {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        if (m_renderFinishedSemaphores[i] != VK_NULL_HANDLE) {
-            vkDestroySemaphore(ctx.device(), m_renderFinishedSemaphores[i], nullptr);
-            m_renderFinishedSemaphores[i] = VK_NULL_HANDLE;
+    // renderFinished semaphores — one per swapchain image
+    for (VkSemaphore& sem : m_renderFinishedSemaphores) {
+        if (sem != VK_NULL_HANDLE) {
+            vkDestroySemaphore(ctx.device(), sem, nullptr);
+            sem = VK_NULL_HANDLE;
         }
+    }
+    m_renderFinishedSemaphores.clear();
+
+    // Per-frame semaphores and fences
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         if (m_imageAvailableSemaphores[i] != VK_NULL_HANDLE) {
             vkDestroySemaphore(ctx.device(), m_imageAvailableSemaphores[i], nullptr);
             m_imageAvailableSemaphores[i] = VK_NULL_HANDLE;
@@ -114,8 +175,8 @@ void Renderer::destroy(const VulkanContext& ctx)
         }
     }
 
-    // Command buffers are freed implicitly when the pool is destroyed,
-    // but explicit free keeps ownership clear.
+    // Command buffers are freed implicitly when the pool is destroyed, but
+    // explicit free keeps ownership intent readable.
     if (m_commandPool != VK_NULL_HANDLE) {
         vkFreeCommandBuffers(ctx.device(), m_commandPool,
                              MAX_FRAMES_IN_FLIGHT, m_commandBuffers);
@@ -124,45 +185,31 @@ void Renderer::destroy(const VulkanContext& ctx)
     }
 }
 
-// ─── Per-frame ────────────────────────────────────────────────────────────────
+// =============================================================================
+// drawFrame()
+// =============================================================================
 
 /// @details
-/// Frame execution sequence:
-///
-///  Step 1  vkWaitForFences      — block CPU until the GPU has finished using
-///                                 this frame slot's resources.
-///  Step 2  acquireNextImage     — ask the swapchain for the next image to render
-///                                 into.  Returns OUT_OF_DATE on window resize.
-///  Step 3  vkResetFences        — reset the fence now we know we'll submit.
-///  Step 4  Begin command buffer — ONE_TIME_SUBMIT: we reset+re-record every frame.
-///  Step 5  Barrier: UNDEFINED → COLOR_ATTACHMENT_OPTIMAL
-///                               — discard old contents, transition for writing.
-///  Step 6  vkCmdBeginRendering  — Dynamic Rendering: describe the colour
-///                                 attachment inline (CLEAR on load, STORE on end).
-///  Step 7  Set viewport/scissor — dynamic state, matches current swapchain extent.
-///  Step 8  Bind pipeline + draw — 3 vertices, no vertex buffer (hardcoded in shader).
-///  Step 9  vkCmdEndRendering    — close the render pass.
-///  Step 10 Barrier: COLOR_ATTACHMENT_OPTIMAL → PRESENT_SRC_KHR
-///                               — transition the image for presentation.
-///  Step 11 vkEndCommandBuffer
-///  Step 12 vkQueueSubmit        — wait on imageAvailable, signal renderFinished.
-///  Step 13 vkQueuePresentKHR    — wait on renderFinished, then flip.
-///
-/// Returns false if the swapchain is out of date (resize needed) or on error.
+/// See Renderer.h for the full 13-step sequence.  The inline comments below
+/// focus on the *why* of each step.
 bool Renderer::drawFrame(const VulkanContext& ctx,
                           SwapChain&           swap,
                           const Pipeline&      pipeline)
 {
     // ── Step 1: Wait for in-flight fence ──────────────────────────────────
-    // This blocks the CPU until the GPU finishes all work submitted for this
-    // frame slot.  On the very first frame the fence starts signalled, so
-    // this returns immediately.
+    // Block the CPU until the GPU finishes all commands submitted in the
+    // *previous* use of this frame slot.  This ensures we don't overwrite
+    // the command buffer or signal a semaphore that the GPU is still reading.
+    //
+    // On frame 0, all fences start signalled, so this returns immediately.
     vkWaitForFences(ctx.device(), 1, &m_inFlightFences[m_currentFrame],
                     VK_TRUE, UINT64_MAX);
 
     // ── Step 2: Acquire next swapchain image ──────────────────────────────
-    // We signal imageAvailableSemaphores[currentFrame] when the driver has
-    // finished presenting the previous content and the image is free to write.
+    // Ask the swapchain for the index of an image we can draw into.
+    // The call returns (nearly) immediately; the image may not yet be free.
+    // imageAvailableSemaphores[currentFrame] is signalled by the driver
+    // when the image is genuinely safe to write to.
     uint32_t imageIndex = 0;
     VkResult acquireResult = swap.acquireNextImage(
         ctx.device(),
@@ -170,9 +217,9 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
         imageIndex);
 
     if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Swapchain is stale (window resized) — tell the caller to rebuild.
-        // The fence was waited on above but NOT reset, so it remains signalled
-        // and the next drawFrame() call on this slot will skip the wait.
+        // Window was resized between frames.  We haven't reset the fence yet
+        // (we only reset it after a successful acquire below), so it stays
+        // signalled and the next drawFrame() call on this slot won't block.
         return false;
     }
     if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
@@ -181,37 +228,54 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     }
 
     // ── Step 3: Reset fence ───────────────────────────────────────────────
-    // Only reset after a successful acquire — now we know we WILL submit
-    // to the GPU and the fence will be signalled again at queue submit.
+    // Only reset the fence AFTER a successful acquire.  If we reset it before
+    // and then the acquire failed, the fence would be unsignalled but no GPU
+    // work is submitted to signal it again — the next vkWaitForFences would
+    // block forever.
     vkResetFences(ctx.device(), 1, &m_inFlightFences[m_currentFrame]);
 
     // ── Step 4: Record command buffer ─────────────────────────────────────
     VkCommandBuffer cmd = m_commandBuffers[m_currentFrame];
+
+    // Reset clears all previous commands and puts the buffer back into the
+    // initial state, ready for a fresh vkBeginCommandBuffer.
     vkResetCommandBuffer(cmd, 0);
 
+    // ONE_TIME_SUBMIT_BIT tells the driver this buffer will be submitted once
+    // and reset before re-use.  This is a hint — the driver may optimise
+    // accordingly (e.g. skip caching certain state).
     VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(cmd, &beginInfo);
 
     // ── Step 5: Barrier — UNDEFINED → COLOR_ATTACHMENT_OPTIMAL ───────────
-    // We don't care about the old image contents (UNDEFINED layout), so we
-    // discard them.  The barrier signals the COLOR_ATTACHMENT_OUTPUT stage
-    // that the image is ready to be written to.
+    // We use the synchronization2 API (Vulkan 1.3 core).  Compared to the
+    // original barrier API it offers finer-grained pipeline stage masks and
+    // clearer semantics.
     //
-    // synchronization2 barrier fields:
-    //   srcStageMask  / srcAccessMask  — what MUST complete before the barrier
-    //   dstStageMask  / dstAccessMask  — what MUST wait until after the barrier
+    // oldLayout = UNDEFINED means "I don't care about the existing contents".
+    // The driver is free to discard or overwrite the image data during the
+    // transition — this is slightly faster than PRESERVE.
+    //
+    // srcStageMask = TOP_OF_PIPE means "nothing before this point needs to
+    // finish" — there are no earlier writes to the image to wait for.
+    //
+    // dstStageMask = COLOR_ATTACHMENT_OUTPUT means "the colour write stage
+    // must wait until this barrier completes" — ensuring the layout change
+    // happens before the fragment shader tries to write colour data.
     VkImage swapImage = swap.images()[imageIndex];
 
     VkImageMemoryBarrier2 toRender{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-    toRender.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;  // nothing to wait for
-    toRender.srcAccessMask = 0;
+    toRender.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+    toRender.srcAccessMask = VK_ACCESS_2_NONE;       // nothing to flush
     toRender.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     toRender.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-    toRender.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;             // discard old contents
+    toRender.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;              // discard old contents
     toRender.newLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     toRender.image         = swapImage;
     toRender.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    // subresourceRange: { aspectMask, baseMipLevel, levelCount, baseArrayLayer, layerCount }
+    // For a swapchain colour image: colour aspect only, mip 0, 1 level, layer 0, 1 layer.
 
     VkDependencyInfo dep1{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
     dep1.imageMemoryBarrierCount = 1;
@@ -219,36 +283,42 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdPipelineBarrier2(cmd, &dep1);
 
     // ── Step 6: Begin Dynamic Rendering ───────────────────────────────────
-    // This replaces vkCmdBeginRenderPass.  The colour attachment is described
-    // inline: CLEAR on load (black background), STORE on end (keep result).
+    // vkCmdBeginRendering replaces vkCmdBeginRenderPass entirely.
+    // We describe the colour attachment inline:
+    //   loadOp  = CLEAR  → discard whatever was in the image and fill with clearValue
+    //   storeOp = STORE  → keep the rendered result so the presentation engine can read it
+    //
+    // The clearValue of (0,0,0,1) gives a black background.
     VkClearValue clearBlack{};
-    // ✅ Explicit VkClearColorValue construction — MSVC + GCC compatible
     clearBlack.color = VkClearColorValue{{0.0f, 0.0f, 0.0f, 1.0f}};
 
     VkRenderingAttachmentInfo colourAttach{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    colourAttach.imageView   = swap.imageViews()[imageIndex];
+    colourAttach.imageView   = swap.imageViews()[imageIndex]; // the specific image we acquired
     colourAttach.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colourAttach.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;   // clear to black
-    colourAttach.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;  // keep rendered contents
+    colourAttach.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colourAttach.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
     colourAttach.clearValue  = clearBlack;
 
     VkRenderingInfo renderingInfo{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    renderingInfo.renderArea           = {{0, 0}, swap.extent()};
-    renderingInfo.layerCount           = 1;
+    renderingInfo.renderArea           = {{0, 0}, swap.extent()}; // full image, no offset
+    renderingInfo.layerCount           = 1;                       // not a layered render
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments    = &colourAttach;
+    // pDepthAttachment and pStencilAttachment are null — no depth buffer for M1
 
     vkCmdBeginRendering(cmd, &renderingInfo);
 
     // ── Step 7: Dynamic viewport and scissor ──────────────────────────────
-    // Match the current swapchain extent so we fill the whole window.
-    // These must be set every frame because they are dynamic state.
+    // These must be set every frame because they are dynamic pipeline state.
+    // The viewport maps NDC (Normalised Device Coordinates, -1 to +1) to
+    // pixel space.  The scissor is a pixel-space rectangle outside which
+    // all fragments are discarded.  Both cover the whole swapchain image.
     VkViewport viewport{};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
     viewport.width    = static_cast<float>(swap.extent().width);
     viewport.height   = static_cast<float>(swap.extent().height);
-    viewport.minDepth = 0.0f;
+    viewport.minDepth = 0.0f; // Vulkan depth range is [0,1] (GLM configured to match)
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
@@ -256,23 +326,36 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     // ── Step 8: Bind pipeline and draw ────────────────────────────────────
-    // No vertex buffer — the 3 positions are a constant array in triangle.vert
-    // indexed by gl_VertexIndex (0, 1, 2).  vkCmdDraw emits those 3 indices.
+    // Binding the pipeline tells the GPU which shaders to run and what
+    // fixed-function state to use for the next draw calls.
+    //
+    // triangle.vert has the three vertex positions as a const array:
+    //   positions[0] = (0.0, -0.5)  — top centre (red)
+    //   positions[1] = (0.5,  0.5)  — bottom right (green)
+    //   positions[2] = (-0.5, 0.5)  — bottom left (blue)
+    // It indexes into that array using gl_VertexIndex (0, 1, 2).
+    // No VkBuffer is bound — the geometry lives entirely in the shader.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
-    vkCmdDraw(cmd, 3, 1, 0, 0); // vertexCount=3, instanceCount=1
+    vkCmdDraw(cmd, 3, 1, 0, 0);
+    // vkCmdDraw args: vertexCount=3, instanceCount=1, firstVertex=0, firstInstance=0
 
     // ── Step 9: End rendering ─────────────────────────────────────────────
     vkCmdEndRendering(cmd);
 
     // ── Step 10: Barrier — COLOR_ATTACHMENT_OPTIMAL → PRESENT_SRC_KHR ────
-    // Finished writing to the image; transition it for the presentation engine.
-    // srcStageMask waits for colour attachment writes to finish before the
-    // layout change, so the presentation engine sees the completed frame.
+    // After rendering, the image must be transitioned to PRESENT_SRC_KHR so
+    // the presentation engine can read it for display.
+    //
+    // srcStageMask = COLOR_ATTACHMENT_OUTPUT — wait for colour writes to finish.
+    // dstStageMask = BOTTOM_OF_PIPE — the presentation engine runs after all
+    //   GPU work; nothing on the GPU reads the image after this transition.
+    // dstAccessMask = NONE — the presentation engine uses its own access path,
+    //   not one visible through the Vulkan memory model.
     VkImageMemoryBarrier2 toPresent{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
     toPresent.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     toPresent.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-    toPresent.dstStageMask  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; // nothing reads after
-    toPresent.dstAccessMask = 0;
+    toPresent.dstStageMask  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+    toPresent.dstAccessMask = VK_ACCESS_2_NONE;
     toPresent.oldLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     toPresent.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     toPresent.image         = swapImage;
@@ -284,14 +367,29 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdPipelineBarrier2(cmd, &dep2);
 
     // ── Step 11: End command buffer ───────────────────────────────────────
+    // Finalises the recording.  After this, the buffer cannot be recorded
+    // into again until it is reset.
     vkEndCommandBuffer(cmd);
 
     // ── Step 12: Submit ───────────────────────────────────────────────────
-    // WAIT on imageAvailable (image is free to write) before COLOR_ATTACHMENT_OUTPUT.
-    // SIGNAL renderFinished when all commands complete.
-    // SIGNAL inFlightFence so the CPU can reuse this frame slot next time.
+    // Submit the command buffer to the graphics queue.
+    //
+    // WAIT on imageAvailable[currentFrame]:
+    //   The driver signals this semaphore when the acquired image is free.
+    //   We wait at the COLOR_ATTACHMENT_OUTPUT stage — i.e. the GPU can run
+    //   vertex shading immediately, and only stalls at the point where it
+    //   would write colour data into the attachment.
+    //
+    // SIGNAL renderFinished[imageIndex]:
+    //   Signalled when all GPU commands complete.  The presentation engine
+    //   waits on this before displaying the image.  Indexed by imageIndex
+    //   (not currentFrame) — see the file header for the safety reasoning.
+    //
+    // SIGNAL inFlightFences[currentFrame]:
+    //   Signalled when all GPU commands complete.  The CPU waits on this
+    //   at step 1 of the *next* use of this frame slot.
     VkSemaphore          waitSems[]   = {m_imageAvailableSemaphores[m_currentFrame]};
-    VkSemaphore          signalSems[] = {m_renderFinishedSemaphores[m_currentFrame]};
+    VkSemaphore          signalSems[] = {m_renderFinishedSemaphores[imageIndex]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -310,7 +408,8 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     }
 
     // ── Step 13: Present ──────────────────────────────────────────────────
-    // WAIT on renderFinished before the display engine reads the image.
+    // Hand the finished image to the presentation engine.
+    // It waits on renderFinished[imageIndex] before scanning out the image.
     VkSwapchainKHR   swapchains[] = {swap.handle()};
     VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
@@ -321,13 +420,16 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
 
     VkResult presentResult = vkQueuePresentKHR(ctx.graphicsQueue(), &presentInfo);
 
-    // Advance frame counter before returning so both success and rebuild
-    // paths use different slots next time.
+    // Advance the frame counter before handling the present result.
+    // Both the success path and the rebuild path should use different slots
+    // on the next call.
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
+    // OUT_OF_DATE or SUBOPTIMAL both mean the swapchain no longer matches the
+    // window — caller must rebuild before the next frame.
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR ||
         presentResult == VK_SUBOPTIMAL_KHR) {
-        return false; // caller rebuilds swapchain
+        return false;
     }
     if (presentResult != VK_SUCCESS) {
         spdlog::error("Renderer: vkQueuePresentKHR error {}", static_cast<int>(presentResult));
@@ -337,9 +439,14 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     return true;
 }
 
+// =============================================================================
+// waitIdle()
+// =============================================================================
+
 /// @details
-/// Blocks until all queued GPU work has completed.  Must be called before
-/// destroying any resource that an in-flight command buffer might reference.
+/// `vkDeviceWaitIdle` blocks until all queues on the device have finished all
+/// submitted work.  This is the "nuclear" synchronisation option — fine for
+/// shutdown and swapchain rebuild, but too expensive to call every frame.
 void Renderer::waitIdle(const VulkanContext& ctx)
 {
     vkDeviceWaitIdle(ctx.device());
