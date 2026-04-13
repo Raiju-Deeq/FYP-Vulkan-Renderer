@@ -43,7 +43,7 @@
       "installDir": "${sourceDir}/install/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "environment": {
-        "VCPKG_ROOT": "/home/mdeeq0/vcpkg"
+        "VCPKG_ROOT": "$env{USERPROFILE}/vcpkg"
       },
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
