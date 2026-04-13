@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+---
 
 ## Build Commands
 
-**Linux (Arch):**
+**Linux (Arch — home machine):**
 ```bash
 # Configure
 cmake --preset linux-debug
@@ -33,9 +35,15 @@ xdg-open docs/doxygen/html/index.html
 cmake --preset uni-debug
 cmake --build --preset uni-debug
 build\uni-debug\vulkan-renderer.exe
+
+:: Release build
+cmake --preset uni-release
+cmake --build --preset uni-release
 ```
 
 Debug presets (`linux-debug`, `uni-debug`) enable AddressSanitizer + UBSan automatically.
+
+---
 
 ## Architecture
 
@@ -64,7 +72,7 @@ The renderer targets **Vulkan 1.3** with **C++20 RAII** throughout. All source l
 ### GLM Configuration (defined globally in CMake)
 
 ```cpp
-GLM_FORCE_DEPTH_ZERO_TO_ONE   // Vulkan depth range [0,1], not OpenGL [-1,1]
+GLM_FORCE_DEPTH_ZERO_TO_ONE   // Vulkan depth range , not OpenGL [-1,1]
 GLM_FORCE_RADIANS
 GLM_ENABLE_EXPERIMENTAL
 ```
@@ -79,102 +87,58 @@ GLSL source files live in `shaders/`. CMake compiles them to `.spv` via `glslc` 
 | `mesh.vert` + `pbr.frag` | M2–M4 — geometry + PBR |
 | `splat.vert/frag` | M6 — Gaussian splatting |
 
+---
+
 ## Dependencies
 
-Managed via **vcpkg manifest mode** (`vcpkg.json`). All dependencies are downloaded automatically on first `cmake --preset`. Do not manually install them.
+Managed via **vcpkg manifest mode** (`vcpkg.json`). All dependencies download automatically on first `cmake --preset`. Do not manually install them.
 
 Core: Vulkan 1.3 (LunarG SDK), vk-bootstrap, GLFW3, GLM, VulkanMemoryAllocator, stb_image, tinyobjloader, Dear ImGui (GLFW + Vulkan backends), spdlog.
 
+---
+
 ## Validation Layers
 
-Validation layers must remain **enabled throughout development** (not just for debugging). Always run with `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`. This is an explicit project requirement.
+Must remain **enabled throughout development** (not just for debugging). Always run with `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`. This is an explicit project requirement.
+
+---
 
 ## Documentation
 
 All public APIs carry Doxygen Javadoc-style headers. When adding new functions or classes, maintain this standard. Docs are generated via the `docs` CMake target.
 
+---
+
 ## Project Status
 
-All source files are currently **scaffolded stubs** (Week 1). Implementation begins Week 2 with Milestone 1 (triangle via Dynamic Rendering). See `README.md` for the full MoSCoW milestone breakdown (M1–M6) and weekly roadmap.
+Source files are actively implemented across all modules (`VulkanContext`, `SwapChain`, `Pipeline`, `Renderer`, `Mesh`, `Material`, `GaussianSplat`). See `README.md` for the full MoSCoW milestone breakdown (M1–M6) and weekly roadmap.
 
-## BEHAVIOURAL RULES
-
-When I ask you to implement something:
-1. Always write Doxygen /// comments first — @file, @brief, @param, @return on every public method
-2. Use RAII C++20 — wrap Vulkan handles in classes with destructors
-3. Never suggest VkRenderPass or VkFramebuffer — Dynamic Rendering only
-4. Add validation layer checks — zero errors is mandatory
-5. Reference my CMake presets (linux-debug, uni-debug) in any build instructions
-
-## LEARNING WORKFLOW
-
-When I ask to learn something new:
-1. Explain the concept and "why" first
-2. Provide 2-3 curated YouTube videos + vkguide.dev or Vulkan Tutorial links
-3. Then guide me through a code implementation step-by-step
-4. Remind me to write a dev log entry after
-
-## DEV LOG WORKFLOW
-
-After every coding session, ask me:
-> "Ready to write your dev log entry? I can generate a template in docs/Dev-Log/YYYY-MM-DD.md"
-
-## SLASH COMMANDS
-
-Define these shortcuts:
-/devlog — Generate today's dev log entry from git diff + session context
-/docme [file] — Add/fix Doxygen comments on the specified file
-/validate — Run cmake build + validation layers and report errors
-/report [section] — Draft a paragraph for the given report section from dev logs
-/plan [task] — Outline steps to implement the task before doing it
-
-
-
-## VAULT AWARENESS
-
-All project notes live in `docs/vault/`. When creating or editing notes:
-1. Use Obsidian Flavored Markdown (wikilinks, callouts, front-matter properties)
-2. Dev logs go in `docs/vault/Dev-Log/YYYY-MM-DD.md`
-3. Research notes go in `docs/vault/Research/`
-4. Planning docs go in `docs/vault/Plans/`
-5. Always add YAML front-matter with `date`, `tags`, and `status` fields
-
-## VAULT NOTE TEMPLATE
-
-When generating any vault note:
----
-date: YYYY-MM-DD
-tags: [vulkan, fyp, <topic>]
-status: draft | in-progress | complete
 ---
 
-## SLASH COMMANDS (extended)
+## Behavioural Rules
 
-/devlog       — Generate today's dev log from git diff + session context → docs/vault/Dev-Log/YYYY-MM-DD.md
-/note [topic] — Create a research note in docs/vault/Research/<topic>.md with proper front-matter
-/plan [task]  — Create a planning doc in docs/vault/Plans/<task>.md with milestones and steps
-/docme [file] — Add/fix Doxygen comments on the specified file
-/validate     — Run cmake build + validation layers and report errors
-/report [sec] — Draft a report section paragraph from dev logs in docs/vault/Dev-Log/
+When asked to implement something:
+1. Always write Doxygen `///` comments first — `@file`, `@brief`, `@param`, `@return` on every public method.
+2. Use RAII C++20 — wrap Vulkan handles in classes with destructors.
+3. Never suggest `VkRenderPass` or `VkFramebuffer` — Dynamic Rendering only.
+4. Add validation layer checks — zero errors is mandatory.
+5. Reference the correct CMake presets (`linux-debug`, `uni-debug`) in all build instructions.
 
+---
 
-# CLAUDE.md
+## Coding Guidelines
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-## 1. Think Before Coding
+### 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
 Before implementing:
 - State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- If multiple interpretations exist, present them — don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
-## 2. Simplicity First
+### 2. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -186,7 +150,7 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 3. Surgical Changes
+### 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -194,15 +158,15 @@ When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+- If you notice unrelated dead code, mention it — don't delete it.
 
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
 
-The test: Every changed line should trace directly to the user's request.
+The test: every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+### 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -211,15 +175,67 @@ Transform tasks into verifiable goals:
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
+For multi-step tasks, state a brief plan before starting:
+
+    [Step] → verify: [check]
+
+    [Step] → verify: [check]
+
+    [Step] → verify: [check]
+
+text
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
 ---
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+## Learning Workflow
+
+When asked to explain or teach something new:
+1. Explain the concept and "why" first.
+2. Provide 2–3 curated YouTube videos + vkguide.dev or Vulkan Tutorial links.
+3. Guide through a code implementation step-by-step.
+4. Remind to write a dev log entry after.
+
+---
+
+## Dev Log Workflow
+
+After every coding session, ask:
+> "Ready to write your dev log entry? I can generate a template in `docs/FYP-Vault/02-Dev-Log/YYYY-MM-DD.md`"
+
+---
+
+## Vault Awareness
+
+All project notes live in `docs/FYP-Vault/`. When creating or editing notes:
+1. Use Obsidian Flavored Markdown (wikilinks, callouts, front-matter properties).
+2. Dev logs go in `docs/FYP-Vault/02-Dev-Log/YYYY-MM-DD.md`.
+3. Research notes go in `docs/FYP-Vault/Research/`.
+4. Planning docs go in `docs/FYP-Vault/01-Plans/`.
+5. Always add YAML front-matter with `date`, `tags`, and `status` fields.
+
+### Vault Note Template
+
+When generating any vault note, use this front-matter block:
+
+```yaml
+---
+date: YYYY-MM-DD
+tags: [vulkan, fyp, <topic>]
+status: draft | in-progress | complete
+---
+```
+
+---
+
+## Slash Commands
+
+| Command | Action |
+|---------|--------|
+| `/devlog` | Generate today's dev log from git diff + session context → `docs/FYP-Vault/02-Dev-Log/YYYY-MM-DD.md` |
+| `/note [topic]` | Create a research note in `docs/FYP-Vault/Research/<topic>.md` with proper front-matter |
+| `/plan [task]` | Create a planning doc in `docs/FYP-Vault/01-Plans/<task>.md` with milestones and steps |
+| `/docme [file]` | Add/fix Doxygen comments on the specified file |
+| `/validate` | Run cmake build + validation layers and report errors |
+| `/report [section]` | Draft a report section paragraph from dev logs in `docs/FYP-Vault/02-Dev-Log/` |

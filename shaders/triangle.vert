@@ -1,8 +1,16 @@
 #version 450
-// M1 - Baseline triangle vertex shader
-// Hardcoded clip-space positions for the initial triangle render.
-// No vertex buffers yet - positions are baked in as a constant array
-// indexed by gl_VertexIndex. Replaced in M2 with a proper vertex buffer.
+// =============================================================================
+// triangle.vert — Baseline triangle vertex shader  [M1 only]
+// =============================================================================
+// Proof-of-concept shader used to verify the full Vulkan pipeline
+// (instance → device → swapchain → pipeline → renderer) without involving
+// vertex buffers, descriptor sets, or UBOs.
+//
+// Positions are hardcoded as a const array indexed by gl_VertexIndex.
+// main.cpp calls vkCmdDraw(cmd, 3, 1, 0, 0) — no vkCmdBindVertexBuffers.
+//
+// Replaced in M2 by mesh.vert + a real VkBuffer vertex buffer.
+// =============================================================================
 
 layout(location = 0) out vec3 fragColor;
 
