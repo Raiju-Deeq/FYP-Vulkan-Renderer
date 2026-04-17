@@ -97,13 +97,17 @@ VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./build/linux-debug/vulkan-render
 ### Windows (DMU Lab)
 
 ```bat
-git clone https://github.com/microsoft/vcpkg %USERPROFILE%\vcpkg
-%USERPROFILE%\vcpkg\bootstrap-vcpkg.bat
-set VCPKG_ROOT=%USERPROFILE%\vcpkg
+# 1. Clone vcpkg
+git clone https://github.com/microsoft/vcpkg "$env:USERPROFILE\vcpkg"
 
-cmake --preset uni-debug
-cmake --build --preset uni-debug
-build\uni-debug\vulkan-renderer.exe
+# 2. Run the bootstrap script
+& "$env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat"
+
+# 3. Set the VCPKG_ROOT environment variable
+$env:VCPKG_ROOT = "$env:USERPROFILE\vcpkg"
+
+# 4. (Recommended) Also add vcpkg to your PATH for the session
+$env:PATH = "$env:VCPKG_ROOT;$env:PATH"
 ```
 
 ### Build Presets
