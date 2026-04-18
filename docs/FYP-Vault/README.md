@@ -2,7 +2,7 @@
 
 **Mohamed Deeq Mohamed · P2884884 · De Montfort University · 2025–2026**
 
-> A real-time Vulkan 1.3 renderer built from scratch in C++20, targeting Dynamic Rendering, explicit synchronisation, and physically based shading - with a stretch goal of 3D Gaussian Splatting (M6) to bridge into PhD research in neural rendering.
+> A focused real-time Vulkan 1.3 renderer built in C++20. The project prioritises Dynamic Rendering, explicit synchronisation, one textured OBJ model, simple camera and lighting, resize-safe swapchain handling, and a stretch goal of 3D Gaussian Splatting from `.ply` files only after the core renderer is complete.
 
 > Open this folder as your Obsidian vault: `File → Open vault → docs/FYP-Vault/`
 
@@ -10,23 +10,23 @@
 
 ## Quick Navigation
 
-| Area | Link |
-|------|------|
-| Today's Dev Log | [[02-Dev-Log/2026-03-30]] |
-| Current Plan | [[01-Plans/Week-1-Day-3-Plan]] |
-| M1 Learnings | [[03-Learnings/Vulkan-Object-Chain]] |
-| Gaussian Splatting | [[Research/Gaussian-Splatting]] |
-| PBR Shading | [[Research/PBR-Shading]] |
-| Inbox | [[00-Inbox/]] |
-| Archive | [[04-Archive/]] |
+| Area               | Link                                 |
+| ------------------ | ------------------------------------ |
+| Today's Dev Log    | [[02-Dev-Log/2026-03-30]]            |
+| Current Plan       | [[01-Plans/Week-1-Day-3-Plan]]       |
+| M1 Learnings       | [[03-Learnings/Vulkan-Object-Chain]] |
+| Gaussian Splatting | [[Research/Gaussian-Splatting]]      |
+| PBR Shading        | [[Research/PBR-Shading]]             |
+| Inbox              | [[00-Inbox/]]                        |
+| Archive            | [[04-Archive/]]                      |
 
 ---
 
 ## Project Overview
 
-This project implements a Vulkan renderer that demonstrates mastery of modern GPU programming concepts at the lowest practical abstraction level. The renderer deliberately avoids legacy Vulkan patterns (`VkRenderPass`, `VkFramebuffer`) in favour of Vulkan 1.3 core features: **Dynamic Rendering**, **synchronization2**, and **VMA** for all GPU memory.
+This project implements a compact Vulkan renderer that demonstrates modern GPU programming concepts at the lowest practical abstraction level. The renderer deliberately avoids legacy Vulkan patterns such as `VkRenderPass` and `VkFramebuffer` in favour of Vulkan 1.3 core features: **Dynamic Rendering**, **synchronization2**, and **VMA** for GPU memory.
 
-The project is scoped as a renderer, not an engine - no physics, ECS, audio, or scripting. The architectural focus is correctness, explicitness, and reproducibility.
+The project is scoped as a renderer, not an engine. It does not include physics, ECS, audio, scripting, or editor tooling. The architectural focus is correctness, explicitness, reproducibility, and a clear reportable pipeline from model loading to on-screen output.
 
 **Repository:** [FYP-Vulkan-Renderer on GitHub](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer)
 
@@ -34,16 +34,19 @@ The project is scoped as a renderer, not an engine - no physics, ECS, audio, or 
 
 ## MoSCoW Milestones
 
-| Milestone | Description | Priority | Target Week | Status |
-|-----------|-------------|----------|-------------|--------|
-| M1 | Baseline pipeline + triangle (Dynamic Rendering) | Must | Wk 2 - 13 Apr | In Progress |
-| M2 | Rotating 3D cube (UBO + depth buffer) | Must | Wk 3 - 20 Apr | Pending |
-| M3 | OBJ loading + textures + Dear ImGui | Should | Wk 5 - 4 May | Pending |
-| M4 | PBR shading (Cook–Torrance BRDF) | Could | Wk 7 - 18 May | Pending |
-| M5 | Polish + full 8-section report | Must | Wk 9 - 1 Jun | Pending |
-| M6 | 3D Gaussian Splatting (.ply render) | Could | Post-M3 | Stretch |
+| Milestone | Description                                               | Priority | Target Week   | Status      |
+| --------- | --------------------------------------------------------- | -------- | ------------- | ----------- |
+| M1        | Baseline pipeline + coloured triangle (Dynamic Rendering) | Must     | Wk 2          | In Progress |
+| M2        | One textured OBJ model + simple pipeline expansion        | Must     | Wk 3          | Pending     |
+| M3        | Basic camera and lighting                                 | Must     | Wk 4          | Pending     |
+| S1        | Resize-safe swapchain handling                            | Should   | Wk 5          | Pending     |
+| S2        | Wireframe or debug normals toggle                         | Should   | Wk 5          | Pending     |
+| M4        | Technical report and cross-platform build                 | Must     | Wk 6          | Pending     |
+| C1        | Mipmap generation                                         | Could    | After M4      | Stretch     |
+| C2        | Basic PBR lighting                                        | Could    | After M4      | Stretch     |
+| C3        | Gaussian Splatting from `.ply`                            | Could    | Final stretch | Stretch     |
 
-> M6 is hard-gated behind M3 sign-off and cannot begin until then.
+> C3 is hard-gated behind the core renderer being complete and stable.
 
 ---
 
@@ -55,81 +58,81 @@ The project is scoped as a renderer, not an engine - no physics, ECS, audio, or 
 
 ### Module Responsibilities
 
-| Module | Role |
-|--------|------|
-| `VulkanContext` | Instance, physical/logical device, graphics queue (via vk-bootstrap) |
-| `SwapChain` | Swapchain, `VkImage[]`, `VkImageView[]` (via vk-bootstrap) |
-| `Pipeline` | SPIR-V loading, `VkPipeline`, `VkPipelineLayout`, `VkDescriptorSetLayout` |
-| `Renderer` | Per-frame loop: command pool/buffers, semaphores, fences, `drawFrame()` |
-| `Mesh` | Vertex/index buffers (device-local, allocated via VMA) |
-| `Material` | PBR uniform buffer, descriptor set, textures (`VkImage`/`VkSampler`) |
-| `GaussianSplat` | GPU storage buffer for 3D Gaussian splatting (M6 stretch goal) |
+| Module          | Role                                                         |
+| --------------- | ------------------------------------------------------------ |
+| `VulkanContext` | Instance, physical/logical device, graphics queue, surface setup via vk-bootstrap |
+| `SwapChain`     | Swapchain, image views, and resize recreation                |
+| `Pipeline`      | SPIR-V loading, pipeline layout, graphics pipeline setup     |
+| `Renderer`      | Per-frame loop, command buffers, fences, semaphores, rendering flow |
+| `Mesh`          | OBJ loading and GPU buffer setup                             |
+| `Camera`        | View/projection control and inspection of the mesh           |
+| `Material`      | Texture and basic lighting data                              |
+| `GaussianSplat` | Stretch goal: `.ply` loading and Gaussian splat rendering    |
 
 ### Key Design Decisions
 
-- **Dynamic Rendering only** - no `VkRenderPass`, no `VkFramebuffer`. Uses `vkCmdBeginRendering`/`vkCmdEndRendering` (Vulkan 1.3 core).
-- **Explicit synchronisation** - all image layout transitions use `VkImageMemoryBarrier2` + `synchronization2`. No hidden state.
-- **Double-buffered** - `MAX_FRAMES_IN_FLIGHT = 2`; per-frame semaphores + fences throttle CPU ahead of GPU.
-- **VMA for all GPU memory** - no direct `vkAllocateMemory` calls anywhere.
-- **vk-bootstrap** - handles instance/device/swapchain boilerplate.
+- **Dynamic Rendering only** - no `VkRenderPass`, no `VkFramebuffer`.
+- **Explicit synchronisation** - all layout transitions use `VkImageMemoryBarrier2` and `synchronization2`.
+- **Double-buffered** - `MAX_FRAMES_IN_FLIGHT = 2` with per-frame semaphores and fences.
+- **VMA for GPU memory** - no direct `vkAllocateMemory` calls.
+- **vk-bootstrap** - handles instance, device, and swapchain boilerplate.
+- **Small, explainable scope** - the core renderer is prioritised over engine-style systems.
 
 ---
 
 ## Tech Stack
 
-| Tool | Purpose |
-|------|---------|
-| Vulkan 1.3 (LunarG SDK) | Graphics API |
-| C++20 | Language standard (RAII throughout) |
-| vk-bootstrap | Instance / device / swapchain setup |
-| GLFW3 | Window + input |
-| GLM | Maths (depth `[0,1]`, radians enforced) |
-| VulkanMemoryAllocator | All GPU memory allocation |
-| Dear ImGui | Debug overlay (GLFW + Vulkan backends) |
-| tinyobjloader | OBJ mesh loading (M3) |
-| stb_image | Texture loading (M3) |
-| spdlog | Logging |
-| CMake + vcpkg | Build system + dependency management |
-| Doxygen | API documentation (auto-generated) |
+| Tool                    | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| Vulkan 1.3 (LunarG SDK) | Graphics API                                |
+| C++20                   | Language standard (RAII throughout)         |
+| vk-bootstrap            | Instance / device / swapchain setup         |
+| GLFW3                   | Window + input                              |
+| GLM                     | Maths                                       |
+| VulkanMemoryAllocator   | GPU memory allocation                       |
+| tinyobjloader           | OBJ mesh loading                            |
+| stb_image               | Texture loading                             |
+| spdlog                  | Logging                                     |
+| CMake + vcpkg           | Build system + dependency management        |
+| Doxygen                 | API documentation                           |
+| Dear ImGui              | Optional debug UI for development only      |
+| tinyply                 | Optional `.ply` loading for Gaussian splats |
 
 ---
 
 ## Risk Register
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|------|------------|--------|------------|
-| 1 | Report deprioritised in favour of artefact | High | High | Start report in Week 4 |
-| 2 | Vulkan sync errors eating development time | Medium | Medium | Validation layers always on |
-| 3 | Image layout transition errors (Dynamic Rendering) | Medium | Medium | Reusable `transitionImageLayout` helper from M1 |
-| 4 | M6 causing scope creep | Medium | Medium | Hard gate behind M3; dropped immediately if M3 slips |
-| 5 | vk-bootstrap swapchain incompatibility on DMU lab drivers | Low | Medium | Fallback control exposed, verified before M1 sign-off |
-| 6 | CMake/vcpkg build failures across platforms | Low | Low | Both presets verified on clean environments |
-| 7 | Issues building for multiple platforms (Arch at home, Windows at Uni) | Medium-High | High | Prioritize working at Uni Campus if this issue becomes big |
-| 8 | `.ply` parser perf for large splat files | Low | Low | Cap at 1M splats for M6 scope |
+| #    | Risk                                            | Likelihood | Impact | Mitigation                                              |
+| ---- | ----------------------------------------------- | ---------- | ------ | ------------------------------------------------------- |
+| 1    | Report falling behind implementation            | High       | High   | Begin writing early and keep notes during development   |
+| 2    | Vulkan sync errors consuming time               | Medium     | High   | Keep validation layers on and use RenderDoc early       |
+| 3    | Swapchain resize handling issues                | Medium     | Medium | Implement resize-safe recreation before polish work     |
+| 4    | Scope creep from stretch goals                  | Medium     | High   | Finish core objectives before starting any stretch work |
+| 5    | Cross-platform build issues on Linux or Windows | Medium     | High   | Test both environments regularly and keep CMake simple  |
+| 6    | `.ply` parsing or splat rendering complexity    | Low        | Medium | Keep Gaussian splats as a final stretch objective only  |
 
 ---
 
-## Won't Have (Intentional Scope Decisions)
+## Won't Have
 
-- Not a game engine - no physics, ECS, audio, scripting, or editor tooling
-- No shadow mapping, deferred shading, skeletal animation, or mobile/console support
-- No NeRF training or ML inference - M6 renders pre-trained `.ply` files only
-- No `VK_KHR_ray_tracing_pipeline` in this submission (future work / PhD research)
-- No multi-GPU, no Vulkan portability layer, no Android/iOS support
+- Not a game engine - no physics, ECS, audio, scripting, or editor tooling.
+- No shadow mapping, deferred shading, skeletal animation, or mobile or console support.
+- No NeRF training or inference - Gaussian splats use pre-trained `.ply` files only.
+- No ray tracing, multi-GPU, portability layers, or Android/iOS support.
 
 ---
 
 ## Vault Structure
 
-| Folder | Purpose |
-|--------|---------|
-| `00-Inbox/` | Unprocessed notes - sort weekly |
-| `01-Plans/` | Milestone roadmaps and daily session plans |
-| `02-Dev-Log/` | Daily development logs (generated via `/devlog`) |
-| `03-Learnings/` | Concept notes and Vulkan deep-dives |
-| `04-Archive/` | Completed milestones and reference material |
-| `Research/` | In-depth research: Gaussian splatting, PBR, neural rendering |
-| `Canvas/` | Visual planning boards |
+| Folder          | Purpose                                                  |
+| --------------- | -------------------------------------------------------- |
+| `00-Inbox/`     | Unprocessed notes - sort weekly                          |
+| `01-Plans/`     | Milestone roadmaps and daily session plans               |
+| `02-Dev-Log/`   | Daily development logs                                   |
+| `03-Learnings/` | Concept notes and Vulkan deep-dives                      |
+| `04-Archive/`   | Completed milestones and reference material              |
+| `Research/`     | Research notes on Gaussian splatting, PBR, and rendering |
+| `Images/`       | Diagrams, screenshots, and visual references             |
 
 ---
 
@@ -148,15 +151,23 @@ The project is scoped as a renderer, not an engine - no physics, ECS, audio, or 
 
 ## Weekly Timeline
 
-| Week | Dates | Focus |
-|------|-------|-------|
-| 1 | 28 Mar – 3 Apr | Setup, documentation, architecture, concept learning |
-| 2 | 6 Apr – 13 Apr | **M1** - Triangle via Dynamic Rendering |
-| 3 | 14 Apr – 20 Apr | **M2** - Rotating cube, UBO, depth buffer |
-| 4–5 | 21 Apr – 4 May | **M3** - OBJ loading, textures, Dear ImGui; begin report |
-| 6–7 | 5 May – 18 May | **M4** - PBR shading (if M3 complete) |
-| 8 | 19 May – 25 May | **M6** - Gaussian splatting (if M3 complete); report writing |
-| 9 | 26 May – 1 Jun | **M5** - Polish, RenderDoc profiling, final report |
+| Week | Focus                                                        |
+| ---- | ------------------------------------------------------------ |
+| 1    | Setup, documentation, architecture, and concept learning     |
+| 2    | **M1** - Coloured triangle via Dynamic Rendering             |
+| 3    | **M2** - Textured OBJ model and pipeline expansion           |
+| 4    | **M3** - Basic camera and lighting                           |
+| 5    | **S1 / S2** - Resize-safe swapchain and debug visualisation  |
+| 6    | **M4** - Cross-platform build, technical report, and final evaluation |
+| 7+   | **C1 / C2 / C3** - Mipmaps, PBR, Gaussian splats only if the core is complete |
+
+---
+
+## Project Notes
+
+- The renderer is intentionally minimal so the report can clearly explain each design choice.
+- Gaussian splatting is a stretch objective, not a core deliverable.
+- The final submission should demonstrate a stable pipeline, a clear learning narrative, and reproducible builds on Linux and Windows.
 
 ---
 
