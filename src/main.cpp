@@ -50,7 +50,13 @@
 #include "Pipeline.h"
 #include "Renderer.h"
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include <spdlog/spdlog.h>
+#include <array>
+#include <chrono>
 #include <cstdlib>
 
 // =============================================================================
@@ -88,8 +94,6 @@ int main()
     spdlog::info("=== FYP Vulkan Renderer — Milestone 1 ===");
 
     // ── GLFW init ─────────────────────────────────────────────────────────
-    // glfwInit() loads the GLFW library and initialises the event system.
-    // It must be called before any other GLFW function.
     if (!glfwInit()) {
         spdlog::error("main: glfwInit failed");
         return EXIT_FAILURE;
@@ -164,7 +168,24 @@ int main()
         return EXIT_FAILURE;
     }
 
+    // ── ImGui ─────────────────────────────────────────────────────────────
+    if (!renderer.initImGui(ctx, swap, window)) {
+        renderer.destroy(ctx);
+        pipeline.destroy(ctx);
+        swap.destroy(ctx);
+        ctx.destroy();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
     spdlog::info("main: all modules initialised — entering render loop");
+
+    // ── Frametime tracking ────────────────────────────────────────────────
+    static constexpr int FRAMETIME_HISTORY = 128;
+    std::array<float, FRAMETIME_HISTORY> frametimeHistory{};
+    int frametimeOffset = 0;
+    auto lastFrameTime  = std::chrono::high_resolution_clock::now();
 
     // ── Render loop ───────────────────────────────────────────────────────
     while (!glfwWindowShouldClose(window)) {
@@ -172,14 +193,36 @@ int main()
         // Without this call the window appears frozen.
         glfwPollEvents();
 
-        // Skip rendering while minimised.  A zero-size framebuffer means the
-        // swapchain extent would be 0×0, which is an invalid argument to the
-        // Vulkan present call.  I wait for an event (glfwWaitEvents) instead
-        // of spinning to avoid burning CPU while the window is minimised.
+        // Skip rendering while minimised — zero-extent is invalid for present.
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         if (fbWidth == 0 || fbHeight == 0) {
             continue;
         }
+
+        // ── Frametime sample ──────────────────────────────────────────────
+        auto   now = std::chrono::high_resolution_clock::now();
+        float  dt  = std::chrono::duration<float, std::milli>(now - lastFrameTime).count();
+        lastFrameTime = now;
+
+        frametimeHistory[frametimeOffset] = dt;
+        frametimeOffset = (frametimeOffset + 1) % FRAMETIME_HISTORY;
+
+        // ── ImGui frame ───────────────────────────────────────────────────
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Performance");
+        ImGui::Text("FPS:        %.1f", dt > 0.0f ? 1000.0f / dt : 0.0f);
+        ImGui::Text("Frame time: %.2f ms", dt);
+        ImGui::Separator();
+        char overlay[32];
+        snprintf(overlay, sizeof(overlay), "%.2f ms", dt);
+        ImGui::PlotLines("##ft", frametimeHistory.data(), FRAMETIME_HISTORY,
+                         frametimeOffset, overlay, 0.0f, 50.0f, ImVec2(0.0f, 80.0f));
+        ImGui::End();
+
+        ImGui::Render();
 
         if (!renderer.drawFrame(ctx, swap, pipeline)) {
             // drawFrame returns false when the swapchain is out of date.
@@ -222,7 +265,8 @@ int main()
     // Destroying a resource the GPU is still reading is undefined behaviour.
     renderer.waitIdle(ctx);
 
-    // Destroy in reverse init order: Renderer → Pipeline → SwapChain → Context.
+    // Destroy in reverse init order: ImGui → Renderer → Pipeline → SwapChain → Context.
+    renderer.shutdownImGui(ctx);
     renderer.destroy(ctx);
     pipeline.destroy(ctx);
     swap.destroy(ctx);

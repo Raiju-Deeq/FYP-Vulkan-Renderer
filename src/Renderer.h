@@ -50,6 +50,7 @@
 class VulkanContext;
 class SwapChain;
 class Pipeline;
+struct GLFWwindow;
 
 /// @brief Number of frames the CPU can be ahead of the GPU.
 /// 2 = double-buffering: GPU works on frame N while CPU records frame N+1.
@@ -118,6 +119,36 @@ public:
      * @return false if any Vulkan object creation fails.
      */
     bool init(const VulkanContext& ctx, const SwapChain& swap);
+
+    /**
+     * @brief Initialises the Dear ImGui context and both GLFW + Vulkan backends.
+     *
+     * Creates a dedicated VkDescriptorPool for ImGui's font atlas, then
+     * initialises `ImGui_ImplGlfw` and `ImGui_ImplVulkan` with dynamic
+     * rendering so no VkRenderPass is required.  Font textures are uploaded
+     * immediately.
+     *
+     * Call after init() and before the render loop.  Call shutdownImGui()
+     * before destroy().
+     *
+     * @param ctx    Fully initialised VulkanContext.
+     * @param swap   Fully initialised SwapChain (format and imageCount are read).
+     * @param window The GLFW window used for input event routing.
+     * @return true  on success.
+     * @return false if descriptor pool creation or backend init fails.
+     */
+    bool initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window);
+
+    /**
+     * @brief Shuts down both ImGui backends, destroys the context, and frees
+     *        the ImGui descriptor pool.
+     *
+     * Must be called while the VkDevice is still valid (i.e. before destroy()
+     * and before ctx.destroy()).  Always call waitIdle() first.
+     *
+     * @param ctx  The same VulkanContext passed to initImGui().
+     */
+    void shutdownImGui(const VulkanContext& ctx);
 
     /**
      * @brief Destroys all owned sync objects, command buffers and the pool.
@@ -217,6 +248,9 @@ private:
 
     /// Which frame slot to use next (cycles 0 → 1 → 0 → …).
     uint32_t m_currentFrame = 0;
+
+    /// Descriptor pool used exclusively by ImGui (font atlas sampler).
+    VkDescriptorPool m_imguiDescriptorPool = VK_NULL_HANDLE;
 };
 
 #endif // FYP_VULKAN_RENDERER_RENDERER_H

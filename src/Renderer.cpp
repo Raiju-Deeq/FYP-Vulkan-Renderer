@@ -44,6 +44,9 @@
 #include "SwapChain.h"
 #include "Pipeline.h"
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <spdlog/spdlog.h>
 
 // =============================================================================
@@ -186,6 +189,76 @@ void Renderer::destroy(const VulkanContext& ctx)
 }
 
 // =============================================================================
+// initImGui()
+// =============================================================================
+
+bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window)
+{
+    // ImGui only needs one combined image sampler slot for its font atlas.
+    VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+    VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    poolInfo.flags        = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    poolInfo.maxSets      = 1;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes   = &poolSize;
+
+    if (vkCreateDescriptorPool(ctx.device(), &poolInfo, nullptr, &m_imguiDescriptorPool) != VK_SUCCESS) {
+        spdlog::error("Renderer: failed to create ImGui descriptor pool");
+        return false;
+    }
+
+    ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    // Dynamic rendering: no VkRenderPass — declare attachment format inline.
+    VkFormat colorFormat = swap.format();
+    VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
+    pipelineRenderingInfo.colorAttachmentCount    = 1;
+    pipelineRenderingInfo.pColorAttachmentFormats = &colorFormat;
+
+    ImGui_ImplVulkan_InitInfo initInfo{};
+    initInfo.Instance                    = ctx.instance();
+    initInfo.PhysicalDevice              = ctx.physicalDevice();
+    initInfo.Device                      = ctx.device();
+    initInfo.QueueFamily                 = ctx.graphicsQueueFamily();
+    initInfo.Queue                       = ctx.graphicsQueue();
+    initInfo.DescriptorPool              = m_imguiDescriptorPool;
+    initInfo.MinImageCount               = 2;
+    initInfo.ImageCount                  = swap.imageCount();
+    initInfo.MSAASamples                 = VK_SAMPLE_COUNT_1_BIT;
+    initInfo.UseDynamicRendering         = true;
+    initInfo.PipelineRenderingCreateInfo = pipelineRenderingInfo;
+
+    if (!ImGui_ImplVulkan_Init(&initInfo)) {
+        spdlog::error("Renderer: ImGui_ImplVulkan_Init failed");
+        return false;
+    }
+
+    ImGui_ImplVulkan_CreateFontsTexture();
+
+    spdlog::info("Renderer: ImGui initialised (dynamic rendering, imgui {})", ImGui::GetVersion());
+    return true;
+}
+
+// =============================================================================
+// shutdownImGui()
+// =============================================================================
+
+void Renderer::shutdownImGui(const VulkanContext& ctx)
+{
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    if (m_imguiDescriptorPool != VK_NULL_HANDLE) {
+        vkDestroyDescriptorPool(ctx.device(), m_imguiDescriptorPool, nullptr);
+        m_imguiDescriptorPool = VK_NULL_HANDLE;
+    }
+}
+
+// =============================================================================
 // drawFrame()
 // =============================================================================
 
@@ -274,8 +347,6 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     toRender.newLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     toRender.image         = swapImage;
     toRender.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    // subresourceRange: { aspectMask, baseMipLevel, levelCount, baseArrayLayer, layerCount }
-    // For a swapchain colour image: colour aspect only, mip 0, 1 level, layer 0, 1 layer.
 
     VkDependencyInfo dep1{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
     dep1.imageMemoryBarrierCount = 1;
@@ -337,7 +408,9 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     // I bind no VkBuffer — the geometry lives entirely in the shader.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
     vkCmdDraw(cmd, 3, 1, 0, 0);
-    // vkCmdDraw args: vertexCount=3, instanceCount=1, firstVertex=0, firstInstance=0
+
+    // ImGui draw calls are recorded inside the same Dynamic Rendering scope.
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
     // ── Step 9: End rendering ─────────────────────────────────────────────
     vkCmdEndRendering(cmd);
