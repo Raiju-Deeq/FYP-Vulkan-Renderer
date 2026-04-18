@@ -58,8 +58,8 @@ The renderer targets **Vulkan 1.3** with **C++20 RAII** throughout. All source l
 | `Pipeline` | SPIR-V loading, `VkPipeline`, `VkPipelineLayout`, `VkDescriptorSetLayout` |
 | `Renderer` | Per-frame loop: command pool/buffers, semaphores, fences, `drawFrame()` |
 | `Mesh` | Vertex/index buffers (device-local, allocated via VMA) |
-| `Material` | PBR uniform buffer, descriptor set, textures (`VkImage`/`VkSampler`) |
-| `GaussianSplat` | GPU storage buffer for 3D Gaussian splatting (Milestone 6 stretch goal) |
+| `Material` | Texture, basic lighting UBO, and descriptor set (`VkImage`/`VkSampler`); PBR params available for C2 |
+| `GaussianSplat` | GPU storage buffer for 3D Gaussian splatting (C3 stretch goal) |
 
 ### Key Design Decisions
 
@@ -84,8 +84,9 @@ GLSL source files live in `shaders/`. CMake compiles them to `.spv` via `glslc` 
 | Shader pair | Milestone |
 |-------------|-----------|
 | `triangle.vert/frag` | M1 — baseline triangle |
-| `mesh.vert` + `pbr.frag` | M2–M4 — geometry + PBR |
-| `splat.vert/frag` | M6 — Gaussian splatting |
+| `mesh.vert` + `mesh.frag` | M2–M3 — geometry + basic lighting |
+| `mesh.vert` + `pbr.frag` | C2 — PBR upgrade (Could Have) |
+| `splat.vert/frag` | C3 — Gaussian splatting (Could Have) |
 
 ---
 
@@ -111,7 +112,7 @@ All public APIs carry Doxygen Javadoc-style headers. When adding new functions o
 
 ## Project Status
 
-Source files are actively implemented across all modules (`VulkanContext`, `SwapChain`, `Pipeline`, `Renderer`, `Mesh`, `Material`, `GaussianSplat`). See `README.md` for the full MoSCoW milestone breakdown (M1–M6) and weekly roadmap.
+Source files are actively implemented across all modules (`VulkanContext`, `SwapChain`, `Pipeline`, `Renderer`, `Mesh`, `Material`, `GaussianSplat`). See `README.md` for the full MoSCoW milestone breakdown (M1–M4, S1–S2, C1–C3) and weekly roadmap.
 
 ---
 

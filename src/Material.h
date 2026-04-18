@@ -1,6 +1,6 @@
 /**
  * @file Material.h
- * @brief PBR material parameters, GPU textures and descriptor set management.
+ * @brief GPU texture, basic lighting UBO, and descriptor set management.
  *
  * ## What a descriptor set is
  * A descriptor set is how I hand resources (textures, uniform buffers) to
@@ -14,15 +14,11 @@
  *  - At draw time you call `vkCmdBindDescriptorSets` to connect the set
  *    to the pipeline.
  *
- * ## PBR — Physically Based Rendering
- * PBR models how light interacts with surfaces using physically meaningful
- * parameters:
- *  - **Base colour (albedo)**: the surface colour without lighting.
- *  - **Metallic**: 0 = dielectric (plastic/stone), 1 = conductor (gold/copper).
- *  - **Roughness**: 0 = mirror, 1 = fully rough diffuse surface.
- *
- * The scalar parameters live in `MaterialUBO` (a uniform buffer object sent
- * to the fragment shader).  Texture maps override these values per-pixel.
+ * ## Material in this renderer (M3)
+ * The core goal is to upload an albedo texture and basic lighting parameters
+ * to the fragment shader so the model is readable and demonstrable.
+ * The `MaterialUBO` struct also carries metallic/roughness fields for the
+ * Could-Have PBR upgrade (C2) — they are dormant until then.
  *
  * ## Descriptor set layout in this renderer
  * | Set | Binding | Type             | Content                |

@@ -26,9 +26,9 @@
  * carries the attributes that map to `GaussianPoint`.
  *
  * ## Implementation status
- * This is a **Could-Have stretch goal (M6)** — scaffolded in Week 1 so the
- * architecture is visible, but implementation begins only after M4 (PBR) is
- * solid.
+ * This is a **Could-Have stretch goal (C3)** — scaffolded in Week 1 so the
+ * architecture is visible, but implementation begins only after the core
+ * renderer (M4) is complete and stable.
  *
  * @see   Kerbl, B. et al. (2023) "3D Gaussian Splatting for Real-Time
  *        Radiance Field Rendering", ACM Transactions on Graphics 42(4).
@@ -76,7 +76,7 @@ struct GaussianPoint
  * @class GaussianSplat
  * @brief Loads a 3DGS `.ply` scene and prepares it for GPU alpha-composited rendering.
  *
- * ## Rendering approach (M6)
+ * ## Rendering approach (C3)
  * Each Gaussian is rendered as a screen-aligned quad (two triangles, four
  * vertices).  The vertex shader expands a single "point" into a quad whose
  * size and shape are determined by the projected 2D covariance.  The fragment
@@ -88,7 +88,7 @@ struct GaussianPoint
  * - **Does NOT own:** the CPU `m_gaussians` array persists so sortByDepth()
  *   can re-sort each frame without re-uploading.
  *
- * ## Usage sketch (M6)
+ * ## Usage sketch (C3)
  * @code
  *   GaussianSplat gs;
  *   gs.loadPly("assets/garden.ply");
@@ -187,7 +187,7 @@ public:
      * (`instanceID = gl_VertexIndex / 4`) and expands each Gaussian into a
      * screen-aligned quad (4 vertices per Gaussian, two triangles).
      *
-     * Alpha blending must be enabled on the pipeline (M6 pipeline variant).
+     * Alpha blending must be enabled on the pipeline (C3 pipeline variant).
      * Splats must already be sorted back-to-front by sortByDepth().
      *
      * @param cmd  Active command buffer in recording state.
@@ -211,7 +211,7 @@ private:
 
     /// Device-local GPU storage buffer holding the sorted Gaussian array.
     VkBuffer m_gpuBuffer = VK_NULL_HANDLE;
-    // VmaAllocation handle will be added here in M6.
+    // VmaAllocation handle will be added here in C3.
 };
 
 #endif // VULKAN_RENDERER_GAUSSIANSPLAT_H

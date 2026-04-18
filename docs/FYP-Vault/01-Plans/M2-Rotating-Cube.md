@@ -11,10 +11,10 @@ tags:
 status: in-progress
 ---
 
-# M2 Plan — Rotating 3D Cube
+# M2 Plan — Textured OBJ Model
 
 > [!abstract] Milestone Goal
-> Render a textured-ready 3D cube that rotates continuously on screen, using real vertex/index buffers uploaded to device-local GPU memory, a depth buffer for correct occlusion, and a UBO-driven MVP matrix for the camera and rotation transforms.
+> Load one OBJ model via tinyobjloader, upload its geometry to device-local GPU memory via staging buffers, apply a texture, and render it using a UBO-driven MVP matrix and a depth buffer for correct occlusion.
 
 **Depends on:** [[2026-04-10]] (M1 verified and clean)
 **Target:** Week 3–4

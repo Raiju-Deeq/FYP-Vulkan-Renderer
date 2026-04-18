@@ -49,23 +49,29 @@ The core project must include the following:
 - [ ] Model loading
 - [ ] Camera
 - [ ] Lighting
-- [ ] Swapchain resize handling
 - [ ] Report and evaluation
 
 These are the only features that must be complete for the project to count as successful.
 
 ---
 
+## Should Have
+
+These are high-priority additions targeted after the core is working.
+
+- [ ] Resize-safe swapchain handling
+  - Recreate the swapchain cleanly after window resizes.
+- [ ] Wireframe or debug normals toggle
+  - Add a simple visual debugging mode to help inspect the mesh and explain the pipeline.
+
 ## Stretch Goals
 
-Stretch work is only attempted if the core renderer is already stable.
+Stretch work is only attempted if the core renderer and report are already stable.
 
 - [ ] PBR
-  - Add a simple physically based shading pass.
+  - Replace the basic lighting model with a simple physically based shading pass.
 - [ ] Mipmaps
   - Generate mipmaps for the loaded texture.
-- [ ] Wireframe or Debug Normals Toggle
-  - Add a simple visual debugging mode to help explain the mesh and rendering pipeline.
 - [ ] Gaussian Splat Rendering
   - Ingest a `.ply` file and render Gaussian splats as a final stretch objective.
 
@@ -81,9 +87,9 @@ Gaussian splatting is deliberately placed last so it does not compete with the c
 - [ ] **One textured OBJ model** · tinyobjloader, buffer uploads, texture sampling
 - [ ] **Simple camera control** · orbit or free movement for inspection
 - [ ] **Basic lighting** · enough to make the mesh readable and demonstrable
-- [ ] **Resize-safe swapchain handling** · recreate swapchain cleanly after window resizes
 - [ ] **Technical report and evaluation** · implementation rationale, testing, reflection, and limitations
-- [ ] **Stretch features** · PBR, mipmaps, debug visualisation, Gaussian splats only after the core is complete
+- [ ] **Should Have** · resize-safe swapchain, wireframe or debug normals toggle
+- [ ] **Could Have (stretch)** · PBR, mipmaps, Gaussian splats — only after core is complete
 
 ---
 
