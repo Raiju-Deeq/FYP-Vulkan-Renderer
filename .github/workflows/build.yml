@@ -1,0 +1,82 @@
+name: CMake Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    name: Ubuntu — Ninja — Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── 2. Vulkan SDK + system deps ──────────────────────────────────────
+      - name: Install Vulkan SDK and system dependencies
+        run: |
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list \
+            https://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            vulkan-sdk \
+            libgl-dev \
+            libx11-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            ninja-build
+          glslc --version
+          echo "VULKAN_SDK=/usr" >> $GITHUB_ENV
+
+      # ── 3. Bootstrap vcpkg ───────────────────────────────────────────────
+      # Clone Microsoft's vcpkg directly and bootstrap it.
+      # This avoids all third-party actions and pinned-commit issues.
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+          $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      # ── 4. Install dependencies from vcpkg.json ──────────────────────────
+      # vcpkg reads vcpkg.json in the repo root and installs all deps:
+      # vk-bootstrap, glfw3, glm, vulkan-memory-allocator, stb,
+      # tinyobjloader, imgui (glfw+vulkan bindings), spdlog
+      - name: Install vcpkg dependencies
+        run: |
+          $HOME/vcpkg/vcpkg install \
+            --triplet x64-linux \
+            --x-manifest-root=. \
+            --x-install-root=$HOME/vcpkg/installed
+
+      # ── 5. Configure CMake ───────────────────────────────────────────────
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DVULKAN_SDK=/usr \
+            -DBUILD_DOCS=OFF
+
+      # ── 6. Build ─────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build build --parallel
+
+      # ── 7. Verify binary ─────────────────────────────────────────────────
+      - name: Verify executable was produced
+        run: |
+          ls -lh build/
+          test -f build/vulkan-renderer \
+            && echo "✅ vulkan-renderer binary found" \
+            || (echo "❌ Binary not found — listing build dir for diagnosis:" && find build/ -type f && exit 1)
