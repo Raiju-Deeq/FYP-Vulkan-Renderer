@@ -189,6 +189,23 @@ bool VulkanContext::init(GLFWwindow* window)
     }
     m_graphicsQueueFamily = queueIndexResult.value();
 
+    // ── Stage 6: Vulkan Memory Allocator ──────────────────────────────────
+    // M2 introduces vertex buffers, index buffers and texture images.  Raw
+    // Vulkan memory allocation is deliberately verbose, so I create one VMA
+    // allocator here and pass it through the context.  The allocator sits on
+    // top of my instance/device pair and is destroyed before vkDestroyDevice.
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    allocatorInfo.physicalDevice = m_physicalDevice;
+    allocatorInfo.device = m_device;
+    allocatorInfo.instance = m_instance;
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+    if (vmaCreateAllocator(&allocatorInfo, &m_allocator) != VK_SUCCESS) {
+        spdlog::error("Failed to create VMA allocator");
+        return false;
+    }
+
     spdlog::info("VulkanContext initialised successfully");
     return true;
 }
@@ -211,6 +228,13 @@ bool VulkanContext::init(GLFWwindow* window)
 /// and instance they belong to are destroyed.
 void VulkanContext::destroy()
 {
+    // 0. VMA allocator: all VMA buffers/images must be destroyed before this,
+    //    and the allocator itself must go before the VkDevice it was built on.
+    if (m_allocator != VK_NULL_HANDLE) {
+        vmaDestroyAllocator(m_allocator);
+        m_allocator = VK_NULL_HANDLE;
+    }
+
     // 1. Logical device: must go first. All VkBuffers, VkImages, VkPipelines,
     //    etc. that I created from this device become invalid after this call.
     if (m_device != VK_NULL_HANDLE) {

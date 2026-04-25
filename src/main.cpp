@@ -120,6 +120,7 @@ int main()
     // Everything else depends on this completing successfully.
     VulkanContext ctx;
     if (!ctx.init(window)) {
+        ctx.destroy();
         glfwDestroyWindow(window);
         glfwTerminate();
         return EXIT_FAILURE;
@@ -196,6 +197,10 @@ int main()
         // Skip rendering while minimised — zero-extent is invalid for present.
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         if (fbWidth == 0 || fbHeight == 0) {
+            // Minimized windows report a zero-sized framebuffer.  Presenting a
+            // zero extent is invalid, so I sleep until the OS sends another
+            // event instead of spinning the CPU in a tight poll loop.
+            glfwWaitEvents();
             continue;
         }
 
@@ -246,6 +251,14 @@ int main()
                 break;
             }
 
+            // renderFinished semaphores are indexed by swapchain image index,
+            // so their count must be rebuilt if the driver gives me a different
+            // number of images after resize.
+            if (!renderer.recreateSwapchainSync(ctx, swap)) {
+                spdlog::error("main: swapchain sync rebuild failed — exiting");
+                break;
+            }
+
             // I must also recreate the pipeline because the colour attachment
             // format *could* have changed after a swapchain rebuild.  In practice
             // the format rarely changes, but the spec does not guarantee it stays
@@ -253,6 +266,15 @@ int main()
             pipeline.destroy(ctx);
             if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
                 spdlog::error("main: pipeline rebuild failed — exiting");
+                break;
+            }
+
+            // ImGui owns a Vulkan backend pipeline that is configured with the
+            // swapchain image count and colour format.  Recreate it after the
+            // swapchain/pipeline rebuild so the debug overlay targets the same
+            // attachment format as the rest of the frame.
+            if (!renderer.recreateImGui(ctx, swap, window)) {
+                spdlog::error("main: ImGui rebuild failed — exiting");
                 break;
             }
         }

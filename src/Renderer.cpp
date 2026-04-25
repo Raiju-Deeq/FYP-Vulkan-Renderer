@@ -90,8 +90,10 @@ bool Renderer::init(const VulkanContext& ctx, const SwapChain& swap)
 
     if (vkAllocateCommandBuffers(ctx.device(), &allocInfo, m_commandBuffers) != VK_SUCCESS) {
         spdlog::error("Renderer: failed to allocate command buffers");
+        destroy(ctx);
         return false;
     }
+    m_commandBuffersAllocated = true;
 
     // ── Per-frame sync objects ────────────────────────────────────────────
     VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -108,38 +110,18 @@ bool Renderer::init(const VulkanContext& ctx, const SwapChain& swap)
                           &m_inFlightFences[i]) != VK_SUCCESS)
         {
             spdlog::error("Renderer: failed to create sync objects for frame {}", i);
+            destroy(ctx);
             return false;
         }
     }
 
-    // ── Per-image renderFinished semaphores ───────────────────────────────
-    // WHY per-image instead of per-frame?
-    //
-    // Using per-frame indexing (renderFinished[currentFrame]) can trigger
-    // VUID-vkQueueSubmit-pSignalSemaphores-00067.  Here's why:
-    //
-    // With MAX_FRAMES_IN_FLIGHT=2 and 4 swapchain images, the CPU can cycle
-    // back to frame slot 0 while the presentation engine still internally
-    // references renderFinished[0] from three frames ago.  The fence ensures
-    // the GPU rendering is done, but doesn't guarantee the presentation engine
-    // has fully released the semaphore.
-    //
-    // Using imageIndex guarantees safety: the swapchain only re-issues image N
-    // after its previous presentation is complete.  So renderFinished[N] is
-    // always free by the time image N is re-acquired.
-    const uint32_t imageCount = swap.imageCount();
-    m_renderFinishedSemaphores.resize(imageCount, VK_NULL_HANDLE);
-    for (uint32_t i = 0; i < imageCount; ++i) {
-        if (vkCreateSemaphore(ctx.device(), &semInfo, nullptr,
-                              &m_renderFinishedSemaphores[i]) != VK_SUCCESS)
-        {
-            spdlog::error("Renderer: failed to create renderFinished semaphore {}", i);
-            return false;
-        }
+    if (!recreateSwapchainSync(ctx, swap)) {
+        destroy(ctx);
+        return false;
     }
 
     spdlog::info("Renderer: initialised ({} frames in flight, {} swapchain images)",
-                 MAX_FRAMES_IN_FLIGHT, imageCount);
+                 MAX_FRAMES_IN_FLIGHT, swap.imageCount());
     return true;
 }
 
@@ -180,12 +162,56 @@ void Renderer::destroy(const VulkanContext& ctx)
 
     // Command buffers are freed implicitly when the pool is destroyed, but
     // I free them explicitly first to keep ownership intent readable.
-    if (m_commandPool != VK_NULL_HANDLE) {
+    if (m_commandPool != VK_NULL_HANDLE && m_commandBuffersAllocated) {
         vkFreeCommandBuffers(ctx.device(), m_commandPool,
                              MAX_FRAMES_IN_FLIGHT, m_commandBuffers);
+        for (VkCommandBuffer& cmd : m_commandBuffers) {
+            cmd = VK_NULL_HANDLE;
+        }
+        m_commandBuffersAllocated = false;
+    }
+
+    if (m_commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(ctx.device(), m_commandPool, nullptr);
         m_commandPool = VK_NULL_HANDLE;
     }
+}
+
+// =============================================================================
+// recreateSwapchainSync()
+// =============================================================================
+
+/// @details
+/// `renderFinished` is the only sync array sized from the swapchain.  A resize
+/// can legally change the number of images the driver gives me, so keeping the
+/// old vector would make `drawFrame()` index the wrong semaphore array.
+///
+/// The caller must wait for the device to be idle first.  That guarantees no
+/// presentation operation still owns one of the old semaphores.
+bool Renderer::recreateSwapchainSync(const VulkanContext& ctx, const SwapChain& swap)
+{
+    for (VkSemaphore& sem : m_renderFinishedSemaphores) {
+        if (sem != VK_NULL_HANDLE) {
+            vkDestroySemaphore(ctx.device(), sem, nullptr);
+            sem = VK_NULL_HANDLE;
+        }
+    }
+
+    const uint32_t imageCount = swap.imageCount();
+    m_renderFinishedSemaphores.assign(imageCount, VK_NULL_HANDLE);
+
+    VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        if (vkCreateSemaphore(ctx.device(), &semInfo, nullptr,
+                              &m_renderFinishedSemaphores[i]) != VK_SUCCESS)
+        {
+            spdlog::error("Renderer: failed to create renderFinished semaphore {}", i);
+            return false;
+        }
+    }
+
+    spdlog::info("Renderer: rebuilt per-image sync for {} swapchain images", imageCount);
+    return true;
 }
 
 // =============================================================================
@@ -194,7 +220,12 @@ void Renderer::destroy(const VulkanContext& ctx)
 
 bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window)
 {
-    // ImGui only needs one combined image sampler slot for its font atlas.
+    // ImGui has its own descriptor pool because it manages descriptor sets for
+    // the font atlas internally.  Keeping that pool separate stops the debug UI
+    // from consuming descriptor capacity meant for my renderer's own materials.
+    //
+    // For now the overlay only uses the font texture, so one combined image
+    // sampler descriptor is enough.
     VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     poolInfo.flags        = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
@@ -210,9 +241,20 @@ bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwi
     ImGui::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui_ImplGlfw_InitForVulkan(window, true);
+    if (!ImGui_ImplGlfw_InitForVulkan(window, true)) {
+        spdlog::error("Renderer: ImGui_ImplGlfw_InitForVulkan failed");
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(ctx.device(), m_imguiDescriptorPool, nullptr);
+        m_imguiDescriptorPool = VK_NULL_HANDLE;
+        return false;
+    }
 
-    // Dynamic rendering: no VkRenderPass — declare attachment format inline.
+    // Dynamic rendering: no VkRenderPass.  The backend still needs to know the
+    // swapchain colour format so it can build its own small UI pipeline.
+    //
+    // If the swapchain format ever changes on rebuild, the ImGui backend should
+    // be recreated too.  Most drivers keep the format stable, but this is worth
+    // keeping in mind when tightening resize handling for the final report.
     VkFormat colorFormat = swap.format();
     VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
     pipelineRenderingInfo.colorAttachmentCount    = 1;
@@ -233,13 +275,37 @@ bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwi
 
     if (!ImGui_ImplVulkan_Init(&initInfo)) {
         spdlog::error("Renderer: ImGui_ImplVulkan_Init failed");
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(ctx.device(), m_imguiDescriptorPool, nullptr);
+        m_imguiDescriptorPool = VK_NULL_HANDLE;
         return false;
     }
 
-    ImGui_ImplVulkan_CreateFontsTexture();
+    if (!ImGui_ImplVulkan_CreateFontsTexture()) {
+        spdlog::error("Renderer: ImGui_ImplVulkan_CreateFontsTexture failed");
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(ctx.device(), m_imguiDescriptorPool, nullptr);
+        m_imguiDescriptorPool = VK_NULL_HANDLE;
+        return false;
+    }
+
+    m_imguiInitialized = true;
 
     spdlog::info("Renderer: ImGui initialised (dynamic rendering, imgui {})", ImGui::GetVersion());
     return true;
+}
+
+// =============================================================================
+// recreateImGui()
+// =============================================================================
+
+bool Renderer::recreateImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window)
+{
+    shutdownImGui(ctx);
+    return initImGui(ctx, swap, window);
 }
 
 // =============================================================================
@@ -248,9 +314,12 @@ bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwi
 
 void Renderer::shutdownImGui(const VulkanContext& ctx)
 {
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    if (m_imguiInitialized) {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        m_imguiInitialized = false;
+    }
 
     if (m_imguiDescriptorPool != VK_NULL_HANDLE) {
         vkDestroyDescriptorPool(ctx.device(), m_imguiDescriptorPool, nullptr);

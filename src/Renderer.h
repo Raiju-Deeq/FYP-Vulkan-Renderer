@@ -140,6 +140,22 @@ public:
     bool initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window);
 
     /**
+     * @brief Rebuilds the ImGui Vulkan backend after a swapchain recreation.
+     *
+     * ImGui creates its own small graphics pipeline internally.  Because this
+     * project uses Dynamic Rendering, that pipeline is configured with the
+     * swapchain colour format and image count at init time.  If the swapchain is
+     * rebuilt, I rebuild the backend too so the overlay stays in step with the
+     * current swapchain.
+     *
+     * @param  ctx    Fully initialised VulkanContext.
+     * @param  swap   Newly rebuilt SwapChain.
+     * @param  window The GLFW window used for ImGui input routing.
+     * @return true   if ImGui is ready to render into the new swapchain.
+     */
+    bool recreateImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwindow* window);
+
+    /**
      * @brief Shuts down both ImGui backends, destroys the context, and frees
      *        the ImGui descriptor pool.
      *
@@ -149,6 +165,22 @@ public:
      * @param ctx  The same VulkanContext passed to initImGui().
      */
     void shutdownImGui(const VulkanContext& ctx);
+
+    /**
+     * @brief Recreates sync objects whose count depends on the swapchain image count.
+     *
+     * Most Renderer objects are tied to frame slots (`MAX_FRAMES_IN_FLIGHT`) and
+     * survive a resize.  `m_renderFinishedSemaphores` is different: it is indexed
+     * by swapchain image index, so its length must match the current swapchain.
+     *
+     * I call this immediately after `SwapChain::rebuild()`, while the device is
+     * idle, before the next frame can acquire an image from the new swapchain.
+     *
+     * @param  ctx   Fully initialised VulkanContext.
+     * @param  swap  Newly rebuilt SwapChain.
+     * @return true  if the semaphore array now matches `swap.imageCount()`.
+     */
+    bool recreateSwapchainSync(const VulkanContext& ctx, const SwapChain& swap);
 
     /**
      * @brief Destroys all owned sync objects, command buffers and the pool.
@@ -251,6 +283,12 @@ private:
 
     /// Descriptor pool used exclusively by ImGui (font atlas sampler).
     VkDescriptorPool m_imguiDescriptorPool = VK_NULL_HANDLE;
+
+    /// True only after both ImGui backends and the font texture are ready.
+    bool m_imguiInitialized = false;
+
+    /// Tracks whether the command buffer array was successfully allocated.
+    bool m_commandBuffersAllocated = false;
 };
 
 #endif // FYP_VULKAN_RENDERER_RENDERER_H

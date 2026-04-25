@@ -13,6 +13,10 @@ set(SOURCES
         src/SwapChain.cpp
         src/Pipeline.cpp
         src/Renderer.cpp
+        src/VmaImplementation.cpp
+        src/AssetLoader/ObjLoader.cpp
+        src/AssetLoader/TextureLoader.cpp
+        src/AssetLoader/GpuUploader.cpp
         src/Mesh.cpp
         src/Material.cpp
         src/GaussianSplat.cpp
@@ -111,6 +115,11 @@ else()
             -Wextra
             -Wpedantic
             -Wno-unused-parameter
+            # Vulkan structs are commonly initialised by setting sType first
+            # and then filling only the fields used by that call.  The rest are
+            # intentionally zero-initialised, so GCC/Clang's aggregate warning
+            # creates noise without finding a real bug here.
+            -Wno-missing-field-initializers
     )
 endif()
 

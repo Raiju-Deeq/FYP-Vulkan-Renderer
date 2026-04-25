@@ -29,6 +29,7 @@
 #define FYP_VULKAN_RENDERER_VULKANCONTEXT_H
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 struct GLFWwindow; ///< Forward declaration — avoids including the full GLFW header here.
 
@@ -177,6 +178,16 @@ public:
      */
     uint32_t         graphicsQueueFamily() const { return m_graphicsQueueFamily; }
 
+    /**
+     * @brief Returns the VMA allocator used for GPU buffers and images.
+     *
+     * Milestone 2 needs a lot of short-lived staging buffers and device-local
+     * resources.  VMA owns the memory allocation details so Mesh, Material and
+     * AssetLoader code can focus on what is being uploaded instead of manually
+     * choosing memory heaps.
+     */
+    VmaAllocator     allocator()           const { return m_allocator; }
+
 private:
     // =========================================================================
     // Owned handles
@@ -202,6 +213,9 @@ private:
 
     /// Validation layer debug callback messenger (null in release builds).
     VkDebugUtilsMessengerEXT m_debugMessenger        = VK_NULL_HANDLE;
+
+    /// Vulkan Memory Allocator instance used by M2+ resource upload code.
+    VmaAllocator             m_allocator             = VK_NULL_HANDLE;
 };
 
 #endif // FYP_VULKAN_RENDERER_VULKANCONTEXT_H
