@@ -61,7 +61,7 @@ bool load(const std::string& path, LoadedMesh& outMesh)
                 const size_t base = static_cast<size_t>(index.texcoord_index) * 2;
                 vertex.texCoord = {
                     attrib.texcoords[base + 0],
-                    1.0f - attrib.texcoords[base + 1]
+                    1.0f - attrib.texcoords[base + 1] // OBJ V=0 is bottom; Vulkan V=0 is top — flip
                 };
             } else {
                 vertex.texCoord = {0.0f, 0.0f};

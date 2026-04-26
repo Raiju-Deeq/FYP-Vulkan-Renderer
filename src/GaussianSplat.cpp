@@ -2,7 +2,7 @@
  * @file GaussianSplat.cpp
  * @brief Stub implementation of GaussianSplat — .ply loading and splat rendering.
  *
- * ## Implementation plan (M6 — stretch goal)
+ * ## Implementation plan (C3 — stretch goal)
  *
  * ### loadPly()
  * The `.ply` format from the 3DGS training pipeline is `binary_little_endian`.
@@ -74,27 +74,27 @@
 
 bool GaussianSplat::loadPly(const std::string& /*plyPath*/)
 {
-    // TODO: M6 — tinyply parse → populate m_gaussians
+    // TODO: C3 — tinyply parse → populate m_gaussians
     return false;
 }
 
 bool GaussianSplat::uploadToGPU(const VulkanContext& /*ctx*/)
 {
-    // TODO: M6 — staging buffer → vkCmdCopyBuffer → device-local storage buffer
+    // TODO: C3 — staging buffer → vkCmdCopyBuffer → device-local storage buffer
     return false;
 }
 
 void GaussianSplat::destroy(const VulkanContext& /*ctx*/)
 {
-    // TODO: M6 — vmaDestroyBuffer(allocator, m_gpuBuffer, m_gpuAlloc)
+    // TODO: C3 — vmaDestroyBuffer(allocator, m_gpuBuffer, m_gpuAlloc)
 }
 
 void GaussianSplat::sortByDepth(const glm::mat4& /*viewMatrix*/)
 {
-    // TODO: M6 — std::sort on projected z-depth, then re-upload to GPU
+    // TODO: C3 — std::sort on projected z-depth, then re-upload to GPU
 }
 
 void GaussianSplat::draw(VkCommandBuffer /*cmd*/) const
 {
-    // TODO: M6 — bind SSBO descriptor set, vkCmdDraw(cmd, 4 * splatCount(), 1, 0, 0)
+    // TODO: C3 — bind SSBO descriptor set, vkCmdDraw(cmd, 4 * splatCount(), 1, 0, 0)
 }

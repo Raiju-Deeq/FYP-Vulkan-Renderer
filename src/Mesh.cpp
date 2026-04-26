@@ -4,50 +4,36 @@
  *
  * ## Implementation plan (Week 3 — Milestone 2)
  *
- * ### upload()
- *  1. I calculate the byte sizes for the vertex and index arrays.
- *  2. I create a *staging* buffer in host-visible memory (CPU-writable) via VMA:
- *     ```cpp
- *     VmaAllocationCreateInfo stagingAllocInfo{};
- *     stagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
- *     vmaCreateBuffer(allocator, &bufferInfo, &stagingAllocInfo,
- *                     &stagingBuffer, &stagingAlloc, nullptr);
- *     ```
- *  3. Map the staging buffer and `memcpy` the CPU data in:
- *     ```cpp
- *     void* data;
- *     vmaMapMemory(allocator, stagingAlloc, &data);
- *     memcpy(data, vertices.data(), byteSize);
- *     vmaUnmapMemory(allocator, stagingAlloc);
- *     ```
- *  4. Create the device-local vertex buffer (GPU VRAM, not CPU-writable):
- *     ```cpp
- *     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
- *     vmaCreateBuffer(allocator, &bufferInfo, &allocInfo,
- *                     &m_vertexBuffer, &m_vertexAlloc, nullptr);
- *     ```
- *  5. Submit a one-time command buffer with `vkCmdCopyBuffer` and wait idle.
- *  6. Destroy the staging buffer via `vmaDestroyBuffer`.
- *  7. Repeat steps 2–6 for the index buffer.
+ * Use `AssetLoader::GpuUploader::uploadBuffer` for both vertex and index uploads —
+ * it handles staging buffer creation, memcpy, vkCmdCopyBuffer, and cleanup
+ * internally.  Store the returned `BufferResource` into m_vertexAlloc / m_indexAlloc,
+ * or extract the handles and call `vmaDestroyBuffer` in destroy().
  *
- * ### bind()
  * ```cpp
- * VkBuffer     buffers[] = { m_vertexBuffer };
- * VkDeviceSize offsets[] = { 0 };
- * vkCmdBindVertexBuffers(cmd, 0, 1, buffers, offsets);
+ * // upload()
+ * GpuUploader::uploadBuffer(ctx, vertices.data(),
+ *     vertices.size() * sizeof(Vertex),
+ *     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertResource);
+ * m_vertexBuffer = vertResource.buffer;
+ * m_vertexAlloc  = vertResource.allocation;
+ *
+ * GpuUploader::uploadBuffer(ctx, indices.data(),
+ *     indices.size() * sizeof(uint32_t),
+ *     VK_BUFFER_USAGE_INDEX_BUFFER_BIT, idxResource);
+ * m_indexBuffer = idxResource.buffer;
+ * m_indexAlloc  = idxResource.allocation;
+ *
+ * // bind()
+ * VkDeviceSize offset = 0;
+ * vkCmdBindVertexBuffers(cmd, 0, 1, &m_vertexBuffer, &offset);
  * vkCmdBindIndexBuffer(cmd, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
- * ```
  *
- * ### draw()
- * ```cpp
+ * // draw()
  * vkCmdDrawIndexed(cmd, m_indexCount, 1, 0, 0, 0);
- * // args: indexCount, instanceCount=1, firstIndex=0, vertexOffset=0, firstInstance=0
- * ```
  *
- * ### destroy()
- * ```cpp
- * vmaDestroyBuffer(allocator, m_vertexBuffer, m_vertexAlloc);
- * vmaDestroyBuffer(allocator, m_indexBuffer,  m_indexAlloc);
+ * // destroy()
+ * vmaDestroyBuffer(ctx.allocator(), m_vertexBuffer, m_vertexAlloc);
+ * vmaDestroyBuffer(ctx.allocator(), m_indexBuffer,  m_indexAlloc);
  * ```
  *
  * @author Mohamed Deeq Mohamed (P2884884)

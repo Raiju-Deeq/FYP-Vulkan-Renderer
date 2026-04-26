@@ -18,6 +18,8 @@ bool loadRgba8(const std::string& path, LoadedTexture& outTexture)
     int height = 0;
     int sourceChannels = 0;
 
+    // Force 4-channel RGBA8 output regardless of source format so the Vulkan
+    // upload path can use VK_FORMAT_R8G8B8A8_SRGB without per-texture branching.
     stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &sourceChannels, STBI_rgb_alpha);
     if (!pixels) {
         spdlog::error("TextureLoader: failed to load '{}': {}", path, stbi_failure_reason());

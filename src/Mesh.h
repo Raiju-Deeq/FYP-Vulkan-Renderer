@@ -36,6 +36,7 @@
 #define FYP_VULKAN_RENDERER_MESH_H
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -159,11 +160,12 @@ public:
     uint32_t vertexCount() const { return m_vertexCount; }
 
 private:
-    VkBuffer m_vertexBuffer = VK_NULL_HANDLE; ///< Device-local vertex buffer (allocated by VMA).
-    VkBuffer m_indexBuffer  = VK_NULL_HANDLE; ///< Device-local index buffer  (allocated by VMA).
-    uint32_t m_vertexCount  = 0;              ///< Element count of the vertex buffer.
-    uint32_t m_indexCount   = 0;              ///< Element count of the index buffer.
-    // VmaAllocation handles will be added here in Week 3 alongside the VMA include.
+    VkBuffer      m_vertexBuffer = VK_NULL_HANDLE; ///< Device-local vertex buffer (allocated by VMA).
+    VmaAllocation m_vertexAlloc  = VK_NULL_HANDLE; ///< VMA allocation backing m_vertexBuffer.
+    VkBuffer      m_indexBuffer  = VK_NULL_HANDLE; ///< Device-local index buffer (allocated by VMA).
+    VmaAllocation m_indexAlloc   = VK_NULL_HANDLE; ///< VMA allocation backing m_indexBuffer.
+    uint32_t      m_vertexCount  = 0;              ///< Element count of the vertex buffer.
+    uint32_t      m_indexCount   = 0;              ///< Element count of the index buffer.
 };
 
 #endif // FYP_VULKAN_RENDERER_MESH_H

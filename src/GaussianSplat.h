@@ -38,10 +38,11 @@
  * @date   2026-03-28
  */
 
-#ifndef VULKAN_RENDERER_GAUSSIANSPLAT_H
-#define VULKAN_RENDERER_GAUSSIANSPLAT_H
+#ifndef FYP_VULKAN_RENDERER_GAUSSIANSPLAT_H
+#define FYP_VULKAN_RENDERER_GAUSSIANSPLAT_H
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
@@ -121,7 +122,7 @@ public:
      * @return false    File not found, not a valid `.ply`, or missing required
      *                  properties (position, opacity, scale, rotation, shDC).
      *
-     * @note  Implementation deferred to M6.
+     * @note  Implementation deferred to C3.
      */
     bool loadPly(const std::string& plyPath);
 
@@ -141,7 +142,7 @@ public:
      * @param  ctx  Initialised VulkanContext.
      * @return true on success.
      *
-     * @note  Implementation deferred to M6.
+     * @note  Implementation deferred to C3.
      */
     bool uploadToGPU(const VulkanContext& ctx);
 
@@ -149,7 +150,7 @@ public:
      * @brief Destroys the GPU storage buffer and its VMA allocation.
      * @param ctx  The same VulkanContext passed to uploadToGPU().
      *
-     * @note  Implementation deferred to M6.
+     * @note  Implementation deferred to C3.
      */
     void destroy(const VulkanContext& ctx);
 
@@ -172,7 +173,7 @@ public:
      *                    The projected depth of Gaussian i is:
      *                    `z = (viewMatrix * vec4(position, 1)).z`.
      *
-     * @note  Implementation deferred to M6.
+     * @note  Implementation deferred to C3.
      */
     void sortByDepth(const glm::mat4& viewMatrix);
 
@@ -192,7 +193,7 @@ public:
      *
      * @param cmd  Active command buffer in recording state.
      *
-     * @note  Implementation deferred to M6.
+     * @note  Implementation deferred to C3.
      */
     void draw(VkCommandBuffer cmd) const;
 
@@ -210,8 +211,9 @@ private:
     std::vector<GaussianPoint> m_gaussians;
 
     /// Device-local GPU storage buffer holding the sorted Gaussian array.
-    VkBuffer m_gpuBuffer = VK_NULL_HANDLE;
-    // VmaAllocation handle will be added here in C3.
+    VkBuffer      m_gpuBuffer = VK_NULL_HANDLE;
+    /// VMA allocation backing m_gpuBuffer.
+    VmaAllocation m_gpuAlloc  = VK_NULL_HANDLE;
 };
 
-#endif // VULKAN_RENDERER_GAUSSIANSPLAT_H
+#endif // FYP_VULKAN_RENDERER_GAUSSIANSPLAT_H

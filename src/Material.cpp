@@ -17,7 +17,9 @@
  * imgInfo.arrayLayers = 1;
  * imgInfo.samples     = VK_SAMPLE_COUNT_1_BIT;
  * imgInfo.usage       = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
- * vmaCreateImage(allocator, &imgInfo, &allocInfo, &m_albedoImage, &m_albedoAlloc, nullptr);
+ * // Prefer GpuUploader::uploadTexture2D which handles image creation, layout
+ * // transitions, staging copy, and view creation in one call.
+ * // Store the returned ImageResource and extract image/allocation/view from it.
  * ```
  *
  * **Step 2 — Upload white pixel via staging:**
@@ -51,8 +53,10 @@
  * ```
  *
  * **Step 6 — UBO buffer (host-visible, persistently mapped):**
- * Allocate a buffer the size of MaterialUBO with VMA_MEMORY_USAGE_CPU_TO_GPU.
- * Map it permanently and update the contents when constants() is mutated.
+ * Use `GpuUploader::uploadBuffer` with `VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT` and
+ * `VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT` so VMA picks a
+ * host-visible heap.  For a UBO this small, persistent mapping via vmaMapMemory
+ * is fine — update it every frame when constants() is mutated.
  *
  * **Step 7 — Allocate and write descriptor set:**
  * ```cpp

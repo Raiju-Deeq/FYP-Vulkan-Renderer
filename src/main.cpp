@@ -65,7 +65,7 @@
 
 static constexpr int  WINDOW_WIDTH  = 1280;       ///< Initial window width in pixels.
 static constexpr int  WINDOW_HEIGHT = 720;         ///< Initial window height in pixels.
-static constexpr char WINDOW_TITLE[] = "FYP Vulkan Renderer — M1 Triangle"; ///< OS title bar text.
+static constexpr char WINDOW_TITLE[] = "FYP Vulkan Renderer"; ///< OS title bar text.
 
 /// Path to the compiled vertex shader, relative to the working directory.
 /// CMake compiles shaders/triangle.vert → shaders/triangle.vert.spv and
@@ -91,7 +91,7 @@ static constexpr char FRAG_SPV[] = "shaders/triangle.frag.spv";
 int main()
 {
     spdlog::set_level(spdlog::level::info);
-    spdlog::info("=== FYP Vulkan Renderer — Milestone 1 ===");
+    spdlog::info("=== FYP Vulkan Renderer — Milestone 2 ===");
 
     // ── GLFW init ─────────────────────────────────────────────────────────
     if (!glfwInit()) {

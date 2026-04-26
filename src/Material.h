@@ -37,6 +37,7 @@
 #define FYP_VULKAN_RENDERER_MATERIAL_H
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 
 class VulkanContext;
@@ -168,12 +169,14 @@ public:
     const MaterialUBO& constants() const { return m_constants; }
 
 private:
-    MaterialUBO     m_constants;                      ///< CPU mirror of the GPU UBO.
-    VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE; ///< Descriptor set bound at draw time.
-    VkBuffer        m_uboBuffer     = VK_NULL_HANDLE; ///< GPU-side UBO (device-local or host-visible).
-    VkImage         m_albedoImage   = VK_NULL_HANDLE; ///< Albedo texture (default: 1×1 white).
-    VkImageView     m_albedoView    = VK_NULL_HANDLE; ///< View over the albedo image.
-    VkSampler       m_sampler       = VK_NULL_HANDLE; ///< Sampler: linear filtering, repeat wrap.
+    MaterialUBO     m_constants;                       ///< CPU mirror of the GPU UBO.
+    VkDescriptorSet m_descriptorSet  = VK_NULL_HANDLE; ///< Descriptor set bound at draw time.
+    VkBuffer        m_uboBuffer      = VK_NULL_HANDLE; ///< GPU-side UBO (host-visible, persistently mapped).
+    VmaAllocation   m_uboAlloc       = VK_NULL_HANDLE; ///< VMA allocation backing m_uboBuffer.
+    VkImage         m_albedoImage    = VK_NULL_HANDLE; ///< Albedo texture (default: 1×1 white).
+    VmaAllocation   m_albedoAlloc    = VK_NULL_HANDLE; ///< VMA allocation backing m_albedoImage.
+    VkImageView     m_albedoView     = VK_NULL_HANDLE; ///< View over the albedo image.
+    VkSampler       m_sampler        = VK_NULL_HANDLE; ///< Sampler: linear filtering, repeat wrap.
 };
 
 #endif // FYP_VULKAN_RENDERER_MATERIAL_H

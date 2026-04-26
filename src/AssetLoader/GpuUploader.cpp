@@ -43,6 +43,8 @@ bool beginSingleUseCommands(const VulkanContext& ctx,
                             VkCommandPool&      outPool,
                             VkCommandBuffer&    outCmd)
 {
+    // TRANSIENT_BIT hints to the driver that this pool's command buffers are
+    // short-lived (submit once then discard) — may enable allocation optimisations.
     VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
     poolInfo.queueFamilyIndex = ctx.graphicsQueueFamily();
@@ -89,6 +91,8 @@ bool endSingleUseCommands(const VulkanContext& ctx,
 
     const VkResult submitResult = vkQueueSubmit(ctx.graphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
     if (submitResult == VK_SUCCESS) {
+        // vkQueueWaitIdle is fine here because uploads are one-off setup operations,
+        // not per-frame work.  A fence would be more efficient for repeated transfers.
         vkQueueWaitIdle(ctx.graphicsQueue());
     }
 
@@ -133,6 +137,8 @@ bool uploadBuffer(const VulkanContext& ctx,
         return false;
     }
 
+    // HOST_ACCESS_SEQUENTIAL_WRITE + VMA_MEMORY_USAGE_AUTO = VMA picks the most
+    // efficient host-visible heap (usually CPU-side BAR on discrete GPUs).
     BufferResource staging{};
     if (!createBuffer(ctx, byteSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
