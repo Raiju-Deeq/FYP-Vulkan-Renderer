@@ -44,12 +44,15 @@
 #define FYP_VULKAN_RENDERER_RENDERER_H
 
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
 #include <cstdint>
 #include <vector>
 
 class VulkanContext;
 class SwapChain;
 class Pipeline;
+class Mesh;
+class Material;
 struct GLFWwindow;
 
 /// @brief Number of frames the CPU can be ahead of the GPU.
@@ -237,7 +240,10 @@ public:
      */
     bool drawFrame(const VulkanContext& ctx,
                    SwapChain&           swap,
-                   const Pipeline&      pipeline);
+                   const Pipeline&      pipeline,
+                   const Mesh&          mesh,
+                   const Material&      material,
+                   const glm::mat4&     mvp);
 
     /**
      * @brief Blocks until all queued GPU work has completed.

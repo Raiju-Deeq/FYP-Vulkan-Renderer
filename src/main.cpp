@@ -49,11 +49,16 @@
 #include "SwapChain.h"
 #include "Pipeline.h"
 #include "Renderer.h"
+#include "Mesh.h"
+#include "Material.h"
+#include "AssetLoader/ObjLoader.h"
+#include "AssetLoader/TextureLoader.h"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 #include <array>
 #include <chrono>
@@ -74,6 +79,8 @@ static constexpr char VERT_SPV[] = "shaders/triangle.vert.spv";
 
 /// Path to the compiled fragment shader.
 static constexpr char FRAG_SPV[] = "shaders/triangle.frag.spv";
+static constexpr char MODEL_PATH[] = "assets/models/viking_room.obj";
+static constexpr char TEXTURE_PATH[] = "assets/textures/viking_room.png";
 
 // =============================================================================
 // main()
@@ -155,12 +162,56 @@ int main()
         return EXIT_FAILURE;
     }
 
+    AssetLoader::LoadedMesh loadedMesh{};
+    if (!AssetLoader::ObjLoader::load(MODEL_PATH, loadedMesh)) {
+        pipeline.destroy(ctx);
+        swap.destroy(ctx);
+        ctx.destroy();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
+    Mesh mesh;
+    if (!mesh.upload(ctx, loadedMesh.vertices, loadedMesh.indices)) {
+        pipeline.destroy(ctx);
+        swap.destroy(ctx);
+        ctx.destroy();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
+    AssetLoader::LoadedTexture loadedTexture{};
+    if (!AssetLoader::TextureLoader::loadRgba8(TEXTURE_PATH, loadedTexture)) {
+        mesh.destroy(ctx);
+        pipeline.destroy(ctx);
+        swap.destroy(ctx);
+        ctx.destroy();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
+    Material material;
+    if (!material.init(ctx, loadedTexture, pipeline.descriptorSetLayout())) {
+        mesh.destroy(ctx);
+        pipeline.destroy(ctx);
+        swap.destroy(ctx);
+        ctx.destroy();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
     // ── Renderer ──────────────────────────────────────────────────────────
     // Creates the command pool, double-buffered command buffers, imageAvailable
     // semaphores (×MAX_FRAMES_IN_FLIGHT), renderFinished semaphores
     // (×swap.imageCount()), and inFlight fences (×MAX_FRAMES_IN_FLIGHT).
     Renderer renderer;
     if (!renderer.init(ctx, swap)) {
+        material.destroy(ctx);
+        mesh.destroy(ctx);
         pipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
@@ -172,6 +223,8 @@ int main()
     // ── ImGui ─────────────────────────────────────────────────────────────
     if (!renderer.initImGui(ctx, swap, window)) {
         renderer.destroy(ctx);
+        material.destroy(ctx);
+        mesh.destroy(ctx);
         pipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
@@ -187,6 +240,7 @@ int main()
     std::array<float, FRAMETIME_HISTORY> frametimeHistory{};
     int frametimeOffset = 0;
     auto lastFrameTime  = std::chrono::high_resolution_clock::now();
+    const auto appStartTime = lastFrameTime;
 
     // ── Render loop ───────────────────────────────────────────────────────
     while (!glfwWindowShouldClose(window)) {
@@ -229,7 +283,28 @@ int main()
 
         ImGui::Render();
 
-        if (!renderer.drawFrame(ctx, swap, pipeline)) {
+        const float elapsedSeconds =
+            std::chrono::duration<float>(now - appStartTime).count();
+        const float aspect =
+            static_cast<float>(fbWidth) / static_cast<float>(fbHeight);
+
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f),
+                                      glm::radians(-90.0f),
+                                      glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model,
+                            elapsedSeconds * 0.5f,
+                            glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f),
+                                     glm::vec3(0.0f, 0.0f, 0.0f),
+                                     glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 projection = glm::perspective(glm::radians(60.0f),
+                                                aspect,
+                                                0.1f,
+                                                10.0f);
+        projection[1][1] *= -1.0f;
+        const glm::mat4 mvp = projection * view * model;
+
+        if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material, mvp)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
             // I must wait for all in-flight GPU work to finish before
@@ -263,9 +338,14 @@ int main()
             // format *could* have changed after a swapchain rebuild.  In practice
             // the format rarely changes, but the spec does not guarantee it stays
             // the same, so rebuilding is the correct approach.
+            material.destroy(ctx);
             pipeline.destroy(ctx);
             if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
                 spdlog::error("main: pipeline rebuild failed — exiting");
+                break;
+            }
+            if (!material.init(ctx, loadedTexture, pipeline.descriptorSetLayout())) {
+                spdlog::error("main: material rebuild failed — exiting");
                 break;
             }
 
@@ -290,6 +370,8 @@ int main()
     // Destroy in reverse init order: ImGui → Renderer → Pipeline → SwapChain → Context.
     renderer.shutdownImGui(ctx);
     renderer.destroy(ctx);
+    material.destroy(ctx);
+    mesh.destroy(ctx);
     pipeline.destroy(ctx);
     swap.destroy(ctx);
     ctx.destroy();

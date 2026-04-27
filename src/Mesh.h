@@ -40,6 +40,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+class VulkanContext;
+
 /**
  * @struct Vertex
  * @brief Interleaved per-vertex attributes uploaded to the vertex buffer.
@@ -107,7 +109,8 @@ public:
      *
      * @note  Implementation deferred to Week 3 (Milestone 2).
      */
-    bool upload(const std::vector<Vertex>&   vertices,
+    bool upload(const VulkanContext&         ctx,
+                const std::vector<Vertex>&   vertices,
                 const std::vector<uint32_t>& indices);
 
     /**
@@ -115,7 +118,7 @@ public:
      *
      * @note  Implementation deferred to Week 3 (Milestone 2).
      */
-    void destroy();
+    void destroy(const VulkanContext& ctx);
 
     // =========================================================================
     // Render-time helpers

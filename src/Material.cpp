@@ -1,115 +1,110 @@
 /**
  * @file Material.cpp
- * @brief Stub implementation of Material — PBR texture and descriptor management.
- *
- * ## Implementation plan (Week 4 — Milestone 3)
- *
- * ### init()
- *
- * **Step 1 — Default 1×1 albedo texture:**
- * ```cpp
- * // Create the VkImage via VMA
- * VkImageCreateInfo imgInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
- * imgInfo.imageType   = VK_IMAGE_TYPE_2D;
- * imgInfo.format      = VK_FORMAT_R8G8B8A8_SRGB;
- * imgInfo.extent      = { 1, 1, 1 };
- * imgInfo.mipLevels   = 1;
- * imgInfo.arrayLayers = 1;
- * imgInfo.samples     = VK_SAMPLE_COUNT_1_BIT;
- * imgInfo.usage       = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
- * // Prefer GpuUploader::uploadTexture2D which handles image creation, layout
- * // transitions, staging copy, and view creation in one call.
- * // Store the returned ImageResource and extract image/allocation/view from it.
- * ```
- *
- * **Step 2 — Upload white pixel via staging:**
- * ```cpp
- * uint32_t whitePixel = 0xFFFFFFFF;
- * // copy whitePixel into staging buffer then vkCmdCopyBufferToImage
- * ```
- *
- * **Step 3 — Image layout transition:**
- * The image starts in UNDEFINED layout.  Before the shader can sample from it,
- * transition it to `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL` via a barrier.
- *
- * **Step 4 — Image view:**
- * ```cpp
- * VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
- * viewInfo.image    = m_albedoImage;
- * viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
- * viewInfo.format   = VK_FORMAT_R8G8B8A8_SRGB;
- * viewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
- * vkCreateImageView(device, &viewInfo, nullptr, &m_albedoView);
- * ```
- *
- * **Step 5 — Sampler:**
- * ```cpp
- * VkSamplerCreateInfo sampInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
- * sampInfo.magFilter    = VK_FILTER_LINEAR;
- * sampInfo.minFilter    = VK_FILTER_LINEAR;
- * sampInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
- * // ... etc.
- * vkCreateSampler(device, &sampInfo, nullptr, &m_sampler);
- * ```
- *
- * **Step 6 — UBO buffer (host-visible, persistently mapped):**
- * Use `GpuUploader::uploadBuffer` with `VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT` and
- * `VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT` so VMA picks a
- * host-visible heap.  For a UBO this small, persistent mapping via vmaMapMemory
- * is fine — update it every frame when constants() is mutated.
- *
- * **Step 7 — Allocate and write descriptor set:**
- * ```cpp
- * vkAllocateDescriptorSets(device, &allocInfo, &m_descriptorSet);
- * // Write UBO at binding 0:
- * VkDescriptorBufferInfo bufInfo{ m_uboBuffer, 0, sizeof(MaterialUBO) };
- * // Write sampler at binding 1:
- * VkDescriptorImageInfo  imgSampInfo{ m_sampler, m_albedoView,
- *                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
- * // vkUpdateDescriptorSets with both writes
- * ```
- *
- * ### bindDescriptorSet()
- * ```cpp
- * vkCmdBindDescriptorSets(cmd,
- *     VK_PIPELINE_BIND_POINT_GRAPHICS,
- *     layout,
- *     1,               // set index = 1
- *     1, &m_descriptorSet,
- *     0, nullptr);     // no dynamic offsets
- * ```
- *
- * ### destroy()
- * ```cpp
- * vkDestroySampler(device, m_sampler, nullptr);
- * vkDestroyImageView(device, m_albedoView, nullptr);
- * vmaDestroyImage(allocator, m_albedoImage, m_albedoAlloc);
- * vmaDestroyBuffer(allocator, m_uboBuffer, m_uboAlloc);
- * // Descriptor set is freed implicitly when the pool is destroyed.
- * ```
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
+ * @brief Descriptor and sampler setup for the M2 textured mesh.
  */
 
 #include "Material.h"
+
 #include "VulkanContext.h"
 
-bool Material::init(const VulkanContext&  /*ctx*/,
-                    VkDescriptorPool      /*pool*/,
-                    VkDescriptorSetLayout /*layout*/)
+#include <spdlog/spdlog.h>
+
+bool Material::init(const VulkanContext&              ctx,
+                    const AssetLoader::LoadedTexture& texture,
+                    VkDescriptorSetLayout             layout)
 {
-    // TODO: Week 4 — create default texture, image view, sampler, UBO, descriptor set
-    return false;
+    destroy(ctx);
+
+    if (!AssetLoader::GpuUploader::uploadTexture2D(ctx, texture, m_albedo)) {
+        spdlog::error("Material: failed to upload albedo texture");
+        return false;
+    }
+
+    VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+    samplerInfo.maxAnisotropy = 1.0f;
+
+    if (vkCreateSampler(ctx.device(), &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS) {
+        spdlog::error("Material: failed to create sampler");
+        destroy(ctx);
+        return false;
+    }
+
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = 1;
+
+    VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    poolInfo.maxSets = 1;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+
+    if (vkCreateDescriptorPool(ctx.device(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
+        spdlog::error("Material: failed to create descriptor pool");
+        destroy(ctx);
+        return false;
+    }
+
+    VkDescriptorSetAllocateInfo allocInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    allocInfo.descriptorPool = m_descriptorPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &layout;
+
+    if (vkAllocateDescriptorSets(ctx.device(), &allocInfo, &m_descriptorSet) != VK_SUCCESS) {
+        spdlog::error("Material: failed to allocate descriptor set");
+        destroy(ctx);
+        return false;
+    }
+
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.sampler = m_sampler;
+    imageInfo.imageView = m_albedo.view;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet = m_descriptorSet;
+    write.dstBinding = 0;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo = &imageInfo;
+
+    vkUpdateDescriptorSets(ctx.device(), 1, &write, 0, nullptr);
+    spdlog::info("Material: descriptor set ready for '{}'", texture.path);
+    return true;
 }
 
-void Material::destroy(const VulkanContext& /*ctx*/)
+void Material::destroy(const VulkanContext& ctx)
 {
-    // TODO: Week 4 — destroy sampler, image view, image (VMA), UBO (VMA)
+    if (m_descriptorPool != VK_NULL_HANDLE) {
+        vkDestroyDescriptorPool(ctx.device(), m_descriptorPool, nullptr);
+        m_descriptorPool = VK_NULL_HANDLE;
+        m_descriptorSet = VK_NULL_HANDLE;
+    }
+
+    if (m_sampler != VK_NULL_HANDLE) {
+        vkDestroySampler(ctx.device(), m_sampler, nullptr);
+        m_sampler = VK_NULL_HANDLE;
+    }
+
+    AssetLoader::GpuUploader::destroyImage(ctx, m_albedo);
 }
 
-void Material::bindDescriptorSet(VkCommandBuffer  /*cmd*/,
-                                  VkPipelineLayout /*layout*/) const
+void Material::bindDescriptorSet(VkCommandBuffer  cmd,
+                                 VkPipelineLayout layout) const
 {
-    // TODO: Week 4 — vkCmdBindDescriptorSets(cmd, GRAPHICS, layout, 1, 1, &m_descriptorSet, 0, nullptr)
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            layout,
+                            0,
+                            1,
+                            &m_descriptorSet,
+                            0,
+                            nullptr);
 }

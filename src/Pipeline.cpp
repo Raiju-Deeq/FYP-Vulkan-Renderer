@@ -20,8 +20,10 @@
 
 #include "Pipeline.h"
 #include "VulkanContext.h"
+#include "Mesh.h"
 
 #include <spdlog/spdlog.h>
+#include <cstddef>
 #include <fstream>
 
 // =============================================================================
@@ -153,8 +155,33 @@ bool Pipeline::init(const VulkanContext& ctx,
     // is completely empty (zero binding descriptions, zero attributes).
     // From M2 onwards this will list binding strides and per-vertex attributes
     // matching the Vertex struct layout.
+    VkVertexInputBindingDescription vertexBinding{};
+    vertexBinding.binding = 0;
+    vertexBinding.stride = sizeof(Vertex);
+    vertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription vertexAttributes[3]{};
+    vertexAttributes[0].binding = 0;
+    vertexAttributes[0].location = 0;
+    vertexAttributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vertexAttributes[0].offset = offsetof(Vertex, position);
+
+    vertexAttributes[1].binding = 0;
+    vertexAttributes[1].location = 1;
+    vertexAttributes[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vertexAttributes[1].offset = offsetof(Vertex, normal);
+
+    vertexAttributes[2].binding = 0;
+    vertexAttributes[2].location = 2;
+    vertexAttributes[2].format = VK_FORMAT_R32G32_SFLOAT;
+    vertexAttributes[2].offset = offsetof(Vertex, texCoord);
+
     VkPipelineVertexInputStateCreateInfo vertexInput{
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    vertexInput.vertexBindingDescriptionCount = 1;
+    vertexInput.pVertexBindingDescriptions = &vertexBinding;
+    vertexInput.vertexAttributeDescriptionCount = 3;
+    vertexInput.pVertexAttributeDescriptions = vertexAttributes;
 
     // ── 4b: Input assembly ────────────────────────────────────────────────
     // TRIANGLE_LIST: every group of 3 consecutive vertices forms one triangle.
@@ -225,9 +252,38 @@ bool Pipeline::init(const VulkanContext& ctx,
     //   - pushConstantRangeCount        : push constant ranges
     // For M1 the triangle shader has no external resources, so I leave this empty.
     // M2 will add the MVP UBO descriptor set layout here.
+    VkDescriptorSetLayoutBinding samplerBinding{};
+    samplerBinding.binding = 0;
+    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerBinding.descriptorCount = 1;
+    samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+    setLayoutInfo.bindingCount = 1;
+    setLayoutInfo.pBindings = &samplerBinding;
+
+    if (vkCreateDescriptorSetLayout(ctx.device(), &setLayoutInfo, nullptr,
+                                    &m_descriptorSetLayout) != VK_SUCCESS) {
+        spdlog::error("Pipeline: failed to create material descriptor set layout");
+        vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
+        vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
+        return false;
+    }
+
+    VkPushConstantRange pushConstant{};
+    pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstant.offset = 0;
+    pushConstant.size = sizeof(float) * 16;
+
     VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &m_descriptorSetLayout;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &pushConstant;
     if (vkCreatePipelineLayout(ctx.device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS) {
         spdlog::error("Pipeline: failed to create pipeline layout");
+        vkDestroyDescriptorSetLayout(ctx.device(), m_descriptorSetLayout, nullptr);
+        m_descriptorSetLayout = VK_NULL_HANDLE;
         vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
         vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
         return false;
@@ -266,6 +322,10 @@ bool Pipeline::init(const VulkanContext& ctx,
     if (vkCreateGraphicsPipelines(ctx.device(), VK_NULL_HANDLE, 1,
                                    &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
         spdlog::error("Pipeline: vkCreateGraphicsPipelines failed");
+        vkDestroyPipelineLayout(ctx.device(), m_layout, nullptr);
+        m_layout = VK_NULL_HANDLE;
+        vkDestroyDescriptorSetLayout(ctx.device(), m_descriptorSetLayout, nullptr);
+        m_descriptorSetLayout = VK_NULL_HANDLE;
         vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
         vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
         return false;

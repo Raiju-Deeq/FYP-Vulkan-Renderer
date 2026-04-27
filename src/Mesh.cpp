@@ -1,66 +1,86 @@
 /**
  * @file Mesh.cpp
- * @brief Stub implementation of Mesh — GPU buffer upload and draw recording.
- *
- * ## Implementation plan (Week 3 — Milestone 2)
- *
- * Use `AssetLoader::GpuUploader::uploadBuffer` for both vertex and index uploads —
- * it handles staging buffer creation, memcpy, vkCmdCopyBuffer, and cleanup
- * internally.  Store the returned `BufferResource` into m_vertexAlloc / m_indexAlloc,
- * or extract the handles and call `vmaDestroyBuffer` in destroy().
- *
- * ```cpp
- * // upload()
- * GpuUploader::uploadBuffer(ctx, vertices.data(),
- *     vertices.size() * sizeof(Vertex),
- *     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertResource);
- * m_vertexBuffer = vertResource.buffer;
- * m_vertexAlloc  = vertResource.allocation;
- *
- * GpuUploader::uploadBuffer(ctx, indices.data(),
- *     indices.size() * sizeof(uint32_t),
- *     VK_BUFFER_USAGE_INDEX_BUFFER_BIT, idxResource);
- * m_indexBuffer = idxResource.buffer;
- * m_indexAlloc  = idxResource.allocation;
- *
- * // bind()
- * VkDeviceSize offset = 0;
- * vkCmdBindVertexBuffers(cmd, 0, 1, &m_vertexBuffer, &offset);
- * vkCmdBindIndexBuffer(cmd, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
- *
- * // draw()
- * vkCmdDrawIndexed(cmd, m_indexCount, 1, 0, 0, 0);
- *
- * // destroy()
- * vmaDestroyBuffer(ctx.allocator(), m_vertexBuffer, m_vertexAlloc);
- * vmaDestroyBuffer(ctx.allocator(), m_indexBuffer,  m_indexAlloc);
- * ```
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
+ * @brief GPU vertex/index buffer upload and indexed draw recording.
  */
 
 #include "Mesh.h"
 
-bool Mesh::upload(const std::vector<Vertex>&   /*vertices*/,
-                  const std::vector<uint32_t>& /*indices*/)
+#include "AssetLoader/GpuUploader.h"
+#include "VulkanContext.h"
+
+#include <spdlog/spdlog.h>
+
+bool Mesh::upload(const VulkanContext&         ctx,
+                  const std::vector<Vertex>&   vertices,
+                  const std::vector<uint32_t>& indices)
 {
-    // TODO: Week 3 — VMA staging buffer → vkCmdCopyBuffer → device-local buffer
-    return false;
+    destroy(ctx);
+
+    if (vertices.empty() || indices.empty()) {
+        spdlog::error("Mesh: upload called with empty geometry");
+        return false;
+    }
+
+    AssetLoader::BufferResource vertexResource{};
+    if (!AssetLoader::GpuUploader::uploadBuffer(
+            ctx,
+            vertices.data(),
+            static_cast<VkDeviceSize>(vertices.size() * sizeof(Vertex)),
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            vertexResource)) {
+        spdlog::error("Mesh: vertex buffer upload failed");
+        return false;
+    }
+
+    AssetLoader::BufferResource indexResource{};
+    if (!AssetLoader::GpuUploader::uploadBuffer(
+            ctx,
+            indices.data(),
+            static_cast<VkDeviceSize>(indices.size() * sizeof(uint32_t)),
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            indexResource)) {
+        spdlog::error("Mesh: index buffer upload failed");
+        AssetLoader::GpuUploader::destroyBuffer(ctx, vertexResource);
+        return false;
+    }
+
+    m_vertexBuffer = vertexResource.buffer;
+    m_vertexAlloc = vertexResource.allocation;
+    m_indexBuffer = indexResource.buffer;
+    m_indexAlloc = indexResource.allocation;
+    m_vertexCount = static_cast<uint32_t>(vertices.size());
+    m_indexCount = static_cast<uint32_t>(indices.size());
+
+    spdlog::info("Mesh: uploaded {} vertices and {} indices", m_vertexCount, m_indexCount);
+    return true;
 }
 
-void Mesh::destroy()
+void Mesh::destroy(const VulkanContext& ctx)
 {
-    // TODO: Week 3 — vmaDestroyBuffer(allocator, m_vertexBuffer, m_vertexAlloc)
-    //                vmaDestroyBuffer(allocator, m_indexBuffer,  m_indexAlloc)
+    if (m_vertexBuffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(ctx.allocator(), m_vertexBuffer, m_vertexAlloc);
+        m_vertexBuffer = VK_NULL_HANDLE;
+        m_vertexAlloc = VK_NULL_HANDLE;
+    }
+
+    if (m_indexBuffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(ctx.allocator(), m_indexBuffer, m_indexAlloc);
+        m_indexBuffer = VK_NULL_HANDLE;
+        m_indexAlloc = VK_NULL_HANDLE;
+    }
+
+    m_vertexCount = 0;
+    m_indexCount = 0;
 }
 
-void Mesh::bind(VkCommandBuffer /*cmd*/) const
+void Mesh::bind(VkCommandBuffer cmd) const
 {
-    // TODO: Week 3 — vkCmdBindVertexBuffers + vkCmdBindIndexBuffer
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(cmd, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
-void Mesh::draw(VkCommandBuffer /*cmd*/) const
+void Mesh::draw(VkCommandBuffer cmd) const
 {
-    // TODO: Week 3 — vkCmdDrawIndexed(cmd, m_indexCount, 1, 0, 0, 0)
+    vkCmdDrawIndexed(cmd, m_indexCount, 1, 0, 0, 0);
 }

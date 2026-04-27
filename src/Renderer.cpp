@@ -43,6 +43,8 @@
 #include "VulkanContext.h"
 #include "SwapChain.h"
 #include "Pipeline.h"
+#include "Mesh.h"
+#include "Material.h"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -336,7 +338,10 @@ void Renderer::shutdownImGui(const VulkanContext& ctx)
 /// focus on the *why* of each step.
 bool Renderer::drawFrame(const VulkanContext& ctx,
                           SwapChain&           swap,
-                          const Pipeline&      pipeline)
+                          const Pipeline&      pipeline,
+                          const Mesh&          mesh,
+                          const Material&      material,
+                          const glm::mat4&     mvp)
 {
     // ── Step 1: Wait for in-flight fence ──────────────────────────────────
     // Block the CPU until the GPU finishes all commands submitted in the
@@ -466,17 +471,16 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     // ── Step 8: Bind pipeline and draw ────────────────────────────────────
-    // Binding the pipeline tells the GPU which shaders to run and what
-    // fixed-function state to use for the next draw calls.
-    //
-    // triangle.vert has the three vertex positions as a const array:
-    //   positions[0] = (0.0, -0.5)  — top centre (red)
-    //   positions[1] = (0.5,  0.5)  — bottom right (green)
-    //   positions[2] = (-0.5, 0.5)  — bottom left (blue)
-    // It indexes into that array using gl_VertexIndex (0, 1, 2).
-    // I bind no VkBuffer — the geometry lives entirely in the shader.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    material.bindDescriptorSet(cmd, pipeline.layout());
+    vkCmdPushConstants(cmd,
+                       pipeline.layout(),
+                       VK_SHADER_STAGE_VERTEX_BIT,
+                       0,
+                       sizeof(glm::mat4),
+                       &mvp);
+    mesh.bind(cmd);
+    mesh.draw(cmd);
 
     // ImGui draw calls are recorded inside the same Dynamic Rendering scope.
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
