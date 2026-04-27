@@ -62,6 +62,7 @@ find_package(tinyply CONFIG REQUIRED)
 target_include_directories(vulkan-renderer PRIVATE
         src/
         ${Stb_INCLUDE_DIR}
+        ${TINYOBJLOADER_INCLUDE_DIRS}
 )
 
 # ── Link libraries ───────────────────────────────────────────────────────────
@@ -71,7 +72,6 @@ target_link_libraries(vulkan-renderer PRIVATE
         glfw
         glm::glm
         GPUOpen::VulkanMemoryAllocator
-        tinyobjloader::tinyobjloader
         imgui::imgui
         spdlog::spdlog
         tinyply

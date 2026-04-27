@@ -39,6 +39,10 @@
         "value": "x64",
         "strategy": "set"
       },
+      "toolset": {
+        "value": "v143,version=14.38",
+        "strategy": "set"
+      },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/install/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
