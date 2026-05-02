@@ -179,7 +179,9 @@ FYP-Vulkan-Renderer/
 ├── CMakeLists.txt
 ├── CMakePresets.json
 ├── vcpkg.json
+├── vcpkg-configuration.json
 ├── README.md
+├── LICENSE
 ├── Doxyfile
 ├── src/
 │   ├── main.cpp
@@ -202,9 +204,14 @@ FYP-Vulkan-Renderer/
 │   └── textures/
 ├── docs/
 │   ├── dev-log/
+│   │   └── gaussian-splat-stretch-goal.md
 │   ├── prototype-evidence/
+│   │   └── M1-triangle.png
 │   └── renderdoc-captures/
 ```
+
+Compiled shader outputs (`*.spv`), build directories, and generated Doxygen
+HTML under `docs/doxygen/` are ignored and regenerated locally.
 
 ---
 
