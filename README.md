@@ -34,7 +34,6 @@ This repository contains the implementation for my Final Year Project at De Mont
 
 The project is designed to stay practical and achievable within a short development window. The goal is to produce a renderer that is stable, explainable, and well-documented rather than to build a full engine.
 
-For more information on the project, please see [FYP-Vulkan-Renderer Docs](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/tree/main/docs/FYP-Vault)
 
 
 ---
