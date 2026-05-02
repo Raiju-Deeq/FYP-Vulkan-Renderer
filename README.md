@@ -20,7 +20,7 @@ This repository contains the implementation for my Final Year Project at De Mont
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![Vulkan](https://img.shields.io/badge/Vulkan-1.3-AC162C?style=flat-square&logo=vulkan&logoColor=white)](https://registry.khronos.org/vulkan/)
 [![CMake](https://img.shields.io/badge/CMake-3.25+-064F8C?style=flat-square&logo=cmake&logoColor=white)](https://cmake.org/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey?style=flat-square&logo=linux&logoColor=white)](#getting-started)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey?style=flat-square&logo=linux&logoColor=white)](README.md#getting-started)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -176,25 +176,34 @@ $env:PATH = "$env:VCPKG_ROOT;$env:PATH"
 
 ```text
 FYP-Vulkan-Renderer/
-├── src/
-│   ├── VulkanContext       # Instance, device, queues, surface setup
-│   ├── SwapChain           # Swapchain and image views
-│   ├── Pipeline            # Shader loading and pipeline setup
-│   ├── Renderer            # Frame loop and command recording
-│   ├── Mesh                # OBJ loading and GPU buffers
-│   ├── Camera              # View and projection control
-│   ├── Material           # Texture and lighting data
-│   └── GaussianSplat       # Stretch goal: .ply splat rendering
-├── shaders/                # GLSL or HLSL compiled to SPIR-V
-├── assets/
-│   ├── models/             # OBJ mesh and texture assets
-│   └── splats/             # .ply files for stretch work
-├── docs/
-│   ├── screenshots/        # Milestone evidence
-│   └── Doxyfile            # Doxygen configuration
 ├── CMakeLists.txt
 ├── CMakePresets.json
-└── vcpkg.json
+├── vcpkg.json
+├── README.md
+├── Doxyfile
+├── src/
+│   ├── main.cpp
+│   ├── application.hpp / application.cpp
+│   ├── window.hpp / window.cpp
+│   ├── vulkan_context.hpp / vulkan_context.cpp
+│   ├── swapchain.hpp / swapchain.cpp
+│   ├── frame_data.hpp / frame_data.cpp
+│   ├── graphics_pipeline.hpp / graphics_pipeline.cpp
+│   ├── gpu_buffer.hpp / gpu_buffer.cpp
+│   ├── mesh.hpp / mesh.cpp
+│   └── texture.hpp / texture.cpp
+├── shaders/
+│   ├── triangle.vert
+│   ├── triangle.frag
+│   ├── mesh.vert
+│   └── mesh.frag
+├── assets/
+│   ├── models/
+│   └── textures/
+├── docs/
+│   ├── dev-log/
+│   ├── prototype-evidence/
+│   └── renderdoc-captures/
 ```
 
 ---
@@ -210,7 +219,7 @@ All dependencies are managed through vcpkg manifest mode.
 | [GLFW](https://www.glfw.org/)                                | Window creation and input                   |
 | [GLM](https://github.com/g-truc/glm)                         | Math                                        |
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | OBJ model loading                           |
-| [stb_image](https://github.com/nothings/stb)                 | Texture loading                             |
+| [stb_image](https://github.com/nothings/stb)                 | Material loading                             |
 | [spdlog](https://github.com/gabime/spdlog)                   | Logging                                     |
 | [Dear ImGui](https://github.com/ocornut/imgui)               | Optional debug UI                           |
 | [tinyply](https://github.com/ddiakopoulos/tinyply)           | Optional `.ply` loading for Gaussian splats |

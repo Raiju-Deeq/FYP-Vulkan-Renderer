@@ -9,17 +9,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ── Source files ─────────────────────────────────────────────────────────────
 set(SOURCES
         src/main.cpp
-        src/VulkanContext.cpp
-        src/SwapChain.cpp
-        src/Pipeline.cpp
-        src/Renderer.cpp
-        src/VmaImplementation.cpp
-        src/AssetLoader/ObjLoader.cpp
-        src/AssetLoader/TextureLoader.cpp
-        src/AssetLoader/GpuUploader.cpp
-        src/Mesh.cpp
-        src/Material.cpp
-        src/GaussianSplat.cpp
+        src/application.cpp
+        src/window.cpp
+        src/vulkan_context.cpp
+        src/swapchain.cpp
+        src/frame_data.cpp
+        src/graphics_pipeline.cpp
+        src/gpu_buffer.cpp
+        src/mesh.cpp
+        src/texture.cpp
 )
 
 add_executable(vulkan-renderer ${SOURCES})
@@ -56,7 +54,6 @@ find_package(Stb REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(tinyply CONFIG REQUIRED)
 
 # ── Include directories ──────────────────────────────────────────────────────
 target_include_directories(vulkan-renderer PRIVATE
@@ -74,7 +71,6 @@ target_link_libraries(vulkan-renderer PRIVATE
         GPUOpen::VulkanMemoryAllocator
         imgui::imgui
         spdlog::spdlog
-        tinyply
 )
 
 # ── Platform compile definitions ─────────────────────────────────────────────
@@ -194,11 +190,11 @@ find_package(Doxygen QUIET)
 option(BUILD_DOCS "Build API documentation with Doxygen" ON)
 
 if (BUILD_DOCS AND DOXYGEN_FOUND)
-    set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile)
+    set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile)
 
     add_custom_target(docs
             COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_IN}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "Generating API documentation with Doxygen"
             VERBATIM
     )
