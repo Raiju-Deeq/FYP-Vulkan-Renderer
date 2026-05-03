@@ -32,7 +32,7 @@
   },
   {
     "label": "[Linux] Build: Docs (Doxygen)",
-    "command": "doxygen docs/Doxyfile",
+    "command": "cmake --build --preset linux-debug --target docs",
     "cwd": "$ZED_WORKTREE_ROOT",
     "tags": ["docs"]
   },
@@ -62,6 +62,7 @@
   },
 
   // ── Windows (DMU Lab — Visual Studio 2022) ────────────────────────────────
+  // These tasks use uni-* presets, so CMake only enables them on Windows.
   // VS generator places the binary at build/uni-debug/Debug/vulkan-renderer.exe
   {
     "label": "[Uni] CMake: Configure (uni-debug)",
@@ -95,7 +96,7 @@
   },
   {
     "label": "[Uni] Build: Docs (Doxygen)",
-    "command": "doxygen docs/Doxyfile",
+    "command": "cmake --build --preset uni-debug --target docs",
     "cwd": "$ZED_WORKTREE_ROOT",
     "tags": ["docs"]
   },

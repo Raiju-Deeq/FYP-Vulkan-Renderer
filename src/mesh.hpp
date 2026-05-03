@@ -26,8 +26,6 @@
  * I call `vmaCreateBuffer` instead of `vkCreateBuffer` + `vkAllocateMemory`,
  * and `vmaDestroyBuffer` instead of `vkDestroyBuffer` + `vkFreeMemory`.
  *
- * @note  Implementation is deferred to Milestone 2 (Week 3).
- *
  * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-03-27
  */
@@ -80,8 +78,12 @@ struct LoadedMesh
 /**
  * @brief Loads and triangulates an OBJ mesh into the renderer's CPU mesh format.
  *
- * This keeps asset parsing next to the Mesh type in the flat `src/` layout while
- * preserving the original tinyobjloader-backed implementation and comments.
+ * Applies the model's fixed import-orientation transform while repacking OBJ
+ * position, normal and UV streams into the interleaved Vertex layout.
+ *
+ * @param path Filesystem path to the OBJ file.
+ * @param outMesh Receives transformed vertices and generated indices.
+ * @return true if the OBJ contained drawable triangle geometry.
  */
 bool loadObjMesh(const std::string& path, LoadedMesh& outMesh);
 
@@ -94,7 +96,7 @@ bool loadObjMesh(const std::string& path, LoadedMesh& outMesh);
  * - The VmaAllocations are the memory backing the buffers — I must free
  *   them together with the buffers via `vmaDestroyBuffer`.
  *
- * ## Usage pattern (M2+)
+ * ## Usage pattern
  * @code
  *   Mesh mesh;
  *   mesh.upload(vertices, indices);   // one-time setup
@@ -127,8 +129,6 @@ public:
      * @param  indices   CPU-side array of 32-bit indices into the vertex array.
      * @return true      on success (both buffers allocated and filled).
      * @return false     if any VMA allocation or Vulkan transfer fails.
-     *
-     * @note  Implementation deferred to Week 3 (Milestone 2).
      */
     bool upload(const VulkanContext&         ctx,
                 const std::vector<Vertex>&   vertices,
@@ -136,8 +136,6 @@ public:
 
     /**
      * @brief Frees vertex and index buffers and their VMA allocations.
-     *
-     * @note  Implementation deferred to Week 3 (Milestone 2).
      */
     void destroy(const VulkanContext& ctx);
 
@@ -155,8 +153,6 @@ public:
      *  - `vkCmdBindIndexBuffer` — sets the index buffer (32-bit uint indices).
      *
      * @param cmd  Active command buffer in recording state.
-     *
-     * @note  Implementation deferred to Week 3 (Milestone 2).
      */
     void bind(VkCommandBuffer cmd) const;
 
@@ -167,8 +163,6 @@ public:
      * Must be called after bind() in the same command buffer recording.
      *
      * @param cmd  Active command buffer (bind() must have been called first).
-     *
-     * @note  Implementation deferred to Week 3 (Milestone 2).
      */
     void draw(VkCommandBuffer cmd) const;
 

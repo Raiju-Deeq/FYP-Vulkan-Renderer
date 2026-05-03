@@ -8,10 +8,32 @@
 #include "gpu_buffer.hpp"
 #include "vulkan_context.hpp"
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+
+namespace
+{
+/// Fixed correction for the Viking OBJ's source orientation.
+constexpr glm::vec3 IMPORT_ROTATION_DEGREES{-90.0f, 0.0f, 0.0f};
+
+glm::mat4 makeImportTransform()
+{
+    glm::mat4 transform{1.0f};
+    transform = glm::rotate(transform,
+                            glm::radians(IMPORT_ROTATION_DEGREES.x),
+                            glm::vec3(1.0f, 0.0f, 0.0f));
+    transform = glm::rotate(transform,
+                            glm::radians(IMPORT_ROTATION_DEGREES.y),
+                            glm::vec3(0.0f, 1.0f, 0.0f));
+    transform = glm::rotate(transform,
+                            glm::radians(IMPORT_ROTATION_DEGREES.z),
+                            glm::vec3(0.0f, 0.0f, 1.0f));
+    return transform;
+}
+} // namespace
 
 bool loadObjMesh(const std::string& path, LoadedMesh& outMesh)
 {
@@ -34,6 +56,8 @@ bool loadObjMesh(const std::string& path, LoadedMesh& outMesh)
 
     const tinyobj::attrib_t& attrib = reader.GetAttrib();
     const auto& shapes = reader.GetShapes();
+    const glm::mat4 importTransform = makeImportTransform();
+    const glm::mat3 normalTransform = glm::mat3(importTransform);
 
     outMesh.vertices.clear();
     outMesh.indices.clear();
@@ -51,6 +75,7 @@ bool loadObjMesh(const std::string& path, LoadedMesh& outMesh)
                     attrib.vertices[base + 1],
                     attrib.vertices[base + 2]
                 };
+                vertex.position = glm::vec3(importTransform * glm::vec4(vertex.position, 1.0f));
             }
 
             if (index.normal_index >= 0) {
@@ -63,6 +88,7 @@ bool loadObjMesh(const std::string& path, LoadedMesh& outMesh)
             } else {
                 vertex.normal = {0.0f, 1.0f, 0.0f};
             }
+            vertex.normal = glm::normalize(normalTransform * vertex.normal);
 
             if (index.texcoord_index >= 0) {
                 const size_t base = static_cast<size_t>(index.texcoord_index) * 2;

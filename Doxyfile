@@ -5,7 +5,7 @@ DOXYFILE_ENCODING      = UTF-8
 
 PROJECT_NAME           = "FYP Vulkan Renderer"
 PROJECT_NUMBER         = "1.0"
-PROJECT_BRIEF          = "Final year project: Vulkan-based PBR renderer"
+PROJECT_BRIEF          = "Final year project: Vulkan 1.3 renderer"
 
 # Output inside the docs directory.
 OUTPUT_DIRECTORY       = docs/doxygen
@@ -18,7 +18,7 @@ OUTPUT_LANGUAGE        = English
 FULL_PATH_NAMES        = NO
 STRIP_FROM_PATH        = .
 
-INPUT                  = .
+INPUT                  = README.md src docs/dev-log
 RECURSIVE              = YES
 
 EXCLUDE_PATTERNS       = */build/*                          */cmake-build-*/*                          */docs/doxygen/*                          */external/*                          */third_party/*                          */vcpkg_installed/*

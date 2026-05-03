@@ -22,11 +22,11 @@
  * `VkPipelineRenderingCreateInfo` (chained into `pNext`), and the actual
  * image view is bound per-frame via `vkCmdBeginRendering`.
  *
- * ## M1 pipeline specifics
- *  - No vertex input (positions hardcoded in `triangle.vert`).
- *  - No descriptor sets (no UBOs, no textures until M2+).
- *  - Dynamic viewport + scissor so the pipeline survives window resize.
- *  - Back-face culling disabled (the test triangle has no closed surface).
+ * ## Mesh pipeline specifics
+ *  - Vertex input matches the `Vertex` layout from mesh.hpp.
+ *  - Descriptor set 0 binds the sampled material texture.
+ *  - Push constants provide the model-view-projection matrix.
+ *  - Dynamic viewport + scissor keep resize handling simple.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
  * @date   2026-03-27
@@ -58,8 +58,8 @@ class VulkanContext;
  * ## Usage
  * @code
  *   Pipeline pipeline;
- *   pipeline.init(ctx, "shaders/triangle.vert.spv",
- *                      "shaders/triangle.frag.spv",
+ *   pipeline.init(ctx, "shaders/mesh.vert.spv",
+ *                      "shaders/mesh.frag.spv",
  *                      swap.format());
  *   // per-frame:
  *   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
@@ -83,7 +83,7 @@ public:
      *  3. Declare shader stage descriptors (vertex + fragment, entry = "main").
      *  4. Configure fixed-function state: vertex input, input assembly,
      *     rasteriser, multisampling, colour blend, dynamic state.
-     *  5. Create an empty `VkPipelineLayout` (no descriptors for M1).
+     *  5. Create a `VkPipelineLayout` with the material descriptor set and MVP push constant.
      *  6. Chain `VkPipelineRenderingCreateInfo` into `pNext` to declare
      *     the colour attachment format — this replaces `VkRenderPass`.
      *  7. Call `vkCreateGraphicsPipelines`.
@@ -122,10 +122,10 @@ public:
 
     /// @brief The pipeline layout.
     /// Required when calling `vkCmdBindDescriptorSets` or `vkCmdPushConstants`
-    /// (used from M2 onwards when UBOs and materials are introduced).
+    /// Used when binding the material descriptor set and MVP push constant.
     VkPipelineLayout      layout()             const { return m_layout; }
 
-    /// @brief Descriptor set layout for set 0 — null until M2 adds the MVP UBO.
+    /// @brief Descriptor set layout for set 0.
     /// A set layout describes the binding slots (UBOs, combined image samplers,
     /// etc.) that the shaders in this pipeline can access.
     VkDescriptorSetLayout descriptorSetLayout() const { return m_descriptorSetLayout; }
@@ -170,10 +170,10 @@ private:
     VkPipeline            m_pipeline            = VK_NULL_HANDLE;
 
     /// Describes the interface between the pipeline and its descriptor sets /
-    /// push constants.  Empty for M1 (no descriptors).
+    /// push constants.
     VkPipelineLayout      m_layout              = VK_NULL_HANDLE;
 
-    /// Descriptor set layout for set 0 — null for M1, populated in M2.
+    /// Descriptor set layout for set 0.
     VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
 };
 

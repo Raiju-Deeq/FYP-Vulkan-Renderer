@@ -1,6 +1,6 @@
 /**
  * @file gpu_buffer.cpp
- * @brief Vulkan/VMA staging implementation for Milestone 2 resources.
+ * @brief Vulkan/VMA staging implementation for renderer resources.
  */
 
 #define VMA_IMPLEMENTATION
@@ -139,7 +139,7 @@ bool uploadBuffer(const VulkanContext& ctx,
                   BufferResource&      outBuffer)
 {
     if (data == nullptr || byteSize == 0) {
-        spdlog::error("GpuUploader: uploadBuffer called with no data");
+        spdlog::error("GpuBuffer: uploadBuffer called with no data");
         return false;
     }
 
@@ -149,13 +149,13 @@ bool uploadBuffer(const VulkanContext& ctx,
     if (!createBuffer(ctx, byteSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
                       VMA_MEMORY_USAGE_AUTO, staging)) {
-        spdlog::error("GpuUploader: failed to create staging buffer");
+        spdlog::error("GpuBuffer: failed to create staging buffer");
         return false;
     }
 
     void* mapped = nullptr;
     if (vmaMapMemory(ctx.allocator(), staging.allocation, &mapped) != VK_SUCCESS) {
-        spdlog::error("GpuUploader: failed to map staging buffer");
+        spdlog::error("GpuBuffer: failed to map staging buffer");
         destroyBuffer(ctx, staging);
         return false;
     }
@@ -166,7 +166,7 @@ bool uploadBuffer(const VulkanContext& ctx,
 
     if (!createBuffer(ctx, byteSize, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                       0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, outBuffer)) {
-        spdlog::error("GpuUploader: failed to create device buffer");
+        spdlog::error("GpuBuffer: failed to create device buffer");
         destroyBuffer(ctx, staging);
         return false;
     }
@@ -174,7 +174,7 @@ bool uploadBuffer(const VulkanContext& ctx,
     VkCommandPool pool = VK_NULL_HANDLE;
     VkCommandBuffer cmd = VK_NULL_HANDLE;
     if (!beginSingleUseCommands(ctx, pool, cmd)) {
-        spdlog::error("GpuUploader: failed to begin copy command buffer");
+        spdlog::error("GpuBuffer: failed to begin copy command buffer");
         destroyBuffer(ctx, staging);
         destroyBuffer(ctx, outBuffer);
         return false;
@@ -188,7 +188,7 @@ bool uploadBuffer(const VulkanContext& ctx,
     destroyBuffer(ctx, staging);
 
     if (!submitted) {
-        spdlog::error("GpuUploader: buffer copy submit failed");
+        spdlog::error("GpuBuffer: buffer copy submit failed");
         destroyBuffer(ctx, outBuffer);
         return false;
     }
@@ -201,7 +201,7 @@ bool uploadTexture2D(const VulkanContext& ctx,
                      ImageResource&       outImage)
 {
     if (texture.pixels.empty() || texture.width <= 0 || texture.height <= 0) {
-        spdlog::error("GpuUploader: uploadTexture2D called with invalid texture");
+        spdlog::error("GpuBuffer: uploadTexture2D called with invalid texture");
         return false;
     }
 
@@ -211,13 +211,13 @@ bool uploadTexture2D(const VulkanContext& ctx,
     if (!createBuffer(ctx, byteSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
                       VMA_MEMORY_USAGE_AUTO, staging)) {
-        spdlog::error("GpuUploader: failed to create texture staging buffer");
+        spdlog::error("GpuBuffer: failed to create texture staging buffer");
         return false;
     }
 
     void* mapped = nullptr;
     if (vmaMapMemory(ctx.allocator(), staging.allocation, &mapped) != VK_SUCCESS) {
-        spdlog::error("GpuUploader: failed to map texture staging buffer");
+        spdlog::error("GpuBuffer: failed to map texture staging buffer");
         destroyBuffer(ctx, staging);
         return false;
     }
@@ -248,7 +248,7 @@ bool uploadTexture2D(const VulkanContext& ctx,
 
     if (vmaCreateImage(ctx.allocator(), &imageInfo, &allocInfo,
                        &outImage.image, &outImage.allocation, nullptr) != VK_SUCCESS) {
-        spdlog::error("GpuUploader: failed to create texture image");
+        spdlog::error("GpuBuffer: failed to create texture image");
         destroyBuffer(ctx, staging);
         return false;
     }
@@ -256,7 +256,7 @@ bool uploadTexture2D(const VulkanContext& ctx,
     VkCommandPool pool = VK_NULL_HANDLE;
     VkCommandBuffer cmd = VK_NULL_HANDLE;
     if (!beginSingleUseCommands(ctx, pool, cmd)) {
-        spdlog::error("GpuUploader: failed to begin texture upload command buffer");
+        spdlog::error("GpuBuffer: failed to begin texture upload command buffer");
         destroyBuffer(ctx, staging);
         destroyImage(ctx, outImage);
         return false;
@@ -289,7 +289,7 @@ bool uploadTexture2D(const VulkanContext& ctx,
     const bool submitted = endSingleUseCommands(ctx, pool, cmd);
     destroyBuffer(ctx, staging);
     if (!submitted) {
-        spdlog::error("GpuUploader: texture upload submit failed");
+        spdlog::error("GpuBuffer: texture upload submit failed");
         destroyImage(ctx, outImage);
         return false;
     }
@@ -301,7 +301,7 @@ bool uploadTexture2D(const VulkanContext& ctx,
     viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
     if (vkCreateImageView(ctx.device(), &viewInfo, nullptr, &outImage.view) != VK_SUCCESS) {
-        spdlog::error("GpuUploader: failed to create texture image view");
+        spdlog::error("GpuBuffer: failed to create texture image view");
         destroyImage(ctx, outImage);
         return false;
     }

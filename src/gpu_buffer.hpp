@@ -1,8 +1,8 @@
 /**
  * @file gpu_buffer.hpp
- * @brief Vulkan/VMA staging helpers for M2 mesh and texture uploads.
+ * @brief Vulkan/VMA staging helpers for mesh and texture uploads.
  *
- * This module contains Vulkan/VMA staging helpers shared by Mesh and Material.
+ * This module keeps the repeated staging-buffer upload code in one place.
  */
 
 #ifndef FYP_VULKAN_RENDERER_GPU_BUFFER_HPP
@@ -43,7 +43,7 @@ struct ImageResource
 /**
  * @brief Uploads arbitrary bytes into a device-local buffer.
  *
- * M2 will use this for vertex and index buffers:
+ * Mesh uses this for vertex and index buffers:
  *  - vertices: `VK_BUFFER_USAGE_VERTEX_BUFFER_BIT`
  *  - indices:  `VK_BUFFER_USAGE_INDEX_BUFFER_BIT`
  *

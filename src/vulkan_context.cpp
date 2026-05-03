@@ -116,8 +116,8 @@ bool VulkanContext::init(GLFWwindow* window)
     //                         pipeline stage masks (VkImageMemoryBarrier2).
     //
     //   VkPhysicalDeviceVulkan12Features:
-    //   - bufferDeviceAddress → lets my GPU shaders access buffers via raw 64-bit
-    //                           addresses. I'll need this for Gaussian Splatting (M6).
+    //   - bufferDeviceAddress → keeps the future Gaussian splatting path possible
+    //                           without changing device creation later.
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
     };
@@ -190,10 +190,9 @@ bool VulkanContext::init(GLFWwindow* window)
     m_graphicsQueueFamily = queueIndexResult.value();
 
     // ── Stage 6: Vulkan Memory Allocator ──────────────────────────────────
-    // M2 introduces vertex buffers, index buffers and texture images.  Raw
-    // Vulkan memory allocation is deliberately verbose, so I create one VMA
-    // allocator here and pass it through the context.  The allocator sits on
-    // top of my instance/device pair and is destroyed before vkDestroyDevice.
+    // Meshes and textures need buffers/images backed by GPU memory.  Raw
+    // Vulkan allocation is deliberately verbose, so I create one VMA allocator
+    // here and pass it through the context.
     VmaAllocatorCreateInfo allocatorInfo{};
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     allocatorInfo.physicalDevice = m_physicalDevice;

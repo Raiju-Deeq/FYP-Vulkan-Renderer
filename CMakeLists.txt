@@ -129,7 +129,6 @@ endif()
 find_program(GLSLC glslc
         HINTS
         "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/tools/shaderc"
-        "${CMAKE_SOURCE_DIR}/build/${PRESET_NAME}/vcpkg_installed/x64-windows/tools/shaderc"
         "$ENV{VULKAN_SDK}/bin"
         "$ENV{VULKAN_SDK}/Bin"
         PATHS
@@ -164,6 +163,8 @@ else()
             "Compile manually with:\n"
             "  glslc shaders/triangle.vert -o shaders/triangle.vert.spv\n"
             "  glslc shaders/triangle.frag -o shaders/triangle.frag.spv\n"
+            "  glslc shaders/mesh.vert -o shaders/mesh.vert.spv\n"
+            "  glslc shaders/mesh.frag -o shaders/mesh.frag.spv\n"
             "glslc ships with the Vulkan SDK. Check that VULKAN_SDK is set correctly."
     )
 endif()

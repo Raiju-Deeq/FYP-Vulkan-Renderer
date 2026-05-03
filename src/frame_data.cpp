@@ -448,7 +448,7 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     renderingInfo.layerCount           = 1;                       // not a layered render
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments    = &colourAttach;
-    // pDepthAttachment and pStencilAttachment are null — no depth buffer for M1
+    // No depth/stencil yet; this path currently renders one simple mesh pass.
 
     vkCmdBeginRendering(cmd, &renderingInfo);
 

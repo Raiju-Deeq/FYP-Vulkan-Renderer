@@ -3,8 +3,8 @@
  * @brief One sampled albedo texture and descriptor set for the M2 mesh path.
  */
 
-#ifndef FYP_VULKAN_RENDERER_MATERIAL_HPP
-#define FYP_VULKAN_RENDERER_MATERIAL_HPP
+#ifndef FYP_VULKAN_RENDERER_TEXTURE_HPP
+#define FYP_VULKAN_RENDERER_TEXTURE_HPP
 
 #include "gpu_buffer.hpp"
 
@@ -82,4 +82,4 @@ private:
     VkDescriptorSet            m_descriptorSet = VK_NULL_HANDLE;
 };
 
-#endif // FYP_VULKAN_RENDERER_MATERIAL_HPP
+#endif // FYP_VULKAN_RENDERER_TEXTURE_HPP

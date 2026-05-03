@@ -70,7 +70,7 @@ static constexpr int  WINDOW_HEIGHT = 720;         ///< Initial window height in
 static constexpr char WINDOW_TITLE[] = "FYP Vulkan Renderer"; ///< OS title bar text.
 
 /// Path to the compiled vertex shader, relative to the working directory.
-/// CMake compiles shaders/triangle.vert → shaders/triangle.vert.spv and
+/// CMake compiles shaders/mesh.vert to shaders/mesh.vert.spv and
 /// copies the result to the build output directory automatically.
 static constexpr char VERT_SPV[] = "shaders/mesh.vert.spv";
 
@@ -78,9 +78,10 @@ static constexpr char VERT_SPV[] = "shaders/mesh.vert.spv";
 static constexpr char FRAG_SPV[] = "shaders/mesh.frag.spv";
 static constexpr char MODEL_PATH[] = "assets/models/viking_room.obj";
 static constexpr char TEXTURE_PATH[] = "assets/textures/viking_room.png";
+static constexpr glm::vec3 MODEL_OFFSET{0.0f, -0.35f, 0.0f};
 
 // =============================================================================
-// main()
+// Application lifecycle
 // =============================================================================
 
 /**
@@ -95,7 +96,7 @@ static constexpr char TEXTURE_PATH[] = "assets/textures/viking_room.png";
 int Application::run()
 {
     spdlog::set_level(spdlog::level::info);
-    spdlog::info("=== FYP Vulkan Renderer — Milestone 2 ===");
+    spdlog::info("=== FYP Vulkan Renderer ===");
 
     // ── AppWindow ────────────────────────────────────────────────────────────
     AppWindow windowSystem;
@@ -131,9 +132,8 @@ int Application::run()
     }
 
     // ── Pipeline ──────────────────────────────────────────────────────────
-    // Loads the triangle SPIR-V shaders and compiles the graphics pipeline.
-    // The swapchain colour format is passed so the pipeline's
-    // VkPipelineRenderingCreateInfo matches the actual attachment format.
+    // I compile the mesh shaders against the current swapchain colour format
+    // because Dynamic Rendering validates that the pipeline and attachment match.
     Pipeline pipeline;
     if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
         swap.destroy(ctx);
@@ -207,7 +207,7 @@ int Application::run()
         return EXIT_FAILURE;
     }
 
-    spdlog::info("main: all modules initialised — entering render loop");
+    spdlog::info("Application: all modules initialised; entering render loop");
 
     // ── Frametime tracking ────────────────────────────────────────────────
     static constexpr int FRAMETIME_HISTORY = 128;
@@ -265,9 +265,7 @@ int Application::run()
         const float aspect =
             static_cast<float>(fbWidth) / static_cast<float>(fbHeight);
 
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f),
-                                      glm::radians(-90.0f),
-                                      glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), MODEL_OFFSET);
         model = glm::rotate(model,
                             elapsedSeconds * 0.5f,
                             glm::vec3(0.0f, 1.0f, 0.0f));
@@ -301,7 +299,7 @@ int Application::run()
             // Rebuild the swapchain at the new size.
             if (!swap.rebuild(ctx, static_cast<uint32_t>(fbWidth),
                                     static_cast<uint32_t>(fbHeight))) {
-                spdlog::error("main: swapchain rebuild failed — exiting");
+                spdlog::error("Application: swapchain rebuild failed; exiting");
                 break;
             }
 
@@ -309,7 +307,7 @@ int Application::run()
             // so their count must be rebuilt if the driver gives me a different
             // number of images after resize.
             if (!renderer.recreateSwapchainSync(ctx, swap)) {
-                spdlog::error("main: swapchain sync rebuild failed — exiting");
+                spdlog::error("Application: swapchain sync rebuild failed; exiting");
                 break;
             }
 
@@ -320,11 +318,11 @@ int Application::run()
             material.destroy(ctx);
             pipeline.destroy(ctx);
             if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
-                spdlog::error("main: pipeline rebuild failed — exiting");
+                spdlog::error("Application: pipeline rebuild failed; exiting");
                 break;
             }
             if (!material.init(ctx, loadedTexture, pipeline.descriptorSetLayout())) {
-                spdlog::error("main: material rebuild failed — exiting");
+                spdlog::error("Application: material rebuild failed; exiting");
                 break;
             }
 
@@ -333,13 +331,13 @@ int Application::run()
             // swapchain/pipeline rebuild so the debug overlay targets the same
             // attachment format as the rest of the frame.
             if (!renderer.recreateImGui(ctx, swap, window)) {
-                spdlog::error("main: ImGui rebuild failed — exiting");
+                spdlog::error("Application: ImGui rebuild failed; exiting");
                 break;
             }
         }
     }
 
-    spdlog::info("main: window closed — shutting down");
+    spdlog::info("Application: window closed; shutting down");
 
     // ── Teardown (strict reverse construction order) ───────────────────────
     // I wait for the GPU to drain all in-flight frames before touching any handle.
@@ -357,6 +355,6 @@ int Application::run()
 
     windowSystem.destroy();
 
-    spdlog::info("main: clean shutdown");
+    spdlog::info("Application: clean shutdown");
     return EXIT_SUCCESS;
 }

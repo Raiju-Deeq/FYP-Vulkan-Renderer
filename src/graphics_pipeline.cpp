@@ -150,11 +150,8 @@ bool Pipeline::init(const VulkanContext& ctx,
     shaderStages[1].pName  = "main";
 
     // ── 4a: Vertex input ──────────────────────────────────────────────────
-    // For M1, triangle.vert has all three vertex positions as a constant
-    // array indexed by gl_VertexIndex.  No VkBuffer is bound — the struct
-    // is completely empty (zero binding descriptions, zero attributes).
-    // From M2 onwards this will list binding strides and per-vertex attributes
-    // matching the Vertex struct layout.
+    // I describe the interleaved Vertex layout here so Vulkan knows how to
+    // fetch position, normal and UV data from the bound vertex buffer.
     VkVertexInputBindingDescription vertexBinding{};
     vertexBinding.binding = 0;
     vertexBinding.stride = sizeof(Vertex);
@@ -214,8 +211,8 @@ bool Pipeline::init(const VulkanContext& ctx,
 
     // ── 4d: Rasteriser ────────────────────────────────────────────────────
     // FILL: draw solid filled triangles (vs. LINE for wireframe).
-    // CULL_MODE_NONE: the M1 triangle is not a closed mesh and has no
-    //   defined "back" face, so I disable culling entirely.
+    // CULL_MODE_NONE: keeps imported OBJ winding issues visible and avoids
+    // accidentally hiding the model while I am still validating assets.
     // lineWidth must be 1.0f unless the wideLines feature is enabled.
     VkPipelineRasterizationStateCreateInfo rasterizer{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -250,8 +247,8 @@ bool Pipeline::init(const VulkanContext& ctx,
     // The layout declares what *types* of resources the shaders can access:
     //   - setLayoutCount / pSetLayouts  : descriptor set layouts (UBOs, samplers)
     //   - pushConstantRangeCount        : push constant ranges
-    // For M1 the triangle shader has no external resources, so I leave this empty.
-    // M2 will add the MVP UBO descriptor set layout here.
+    // The mesh shader reads one combined image sampler from set 0, binding 0.
+    // The MVP matrix is small enough for a push constant, so I avoid a UBO here.
     VkDescriptorSetLayoutBinding samplerBinding{};
     samplerBinding.binding = 0;
     samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -363,7 +360,6 @@ void Pipeline::destroy(const VulkanContext& ctx)
         m_layout = VK_NULL_HANDLE;
     }
 
-    // Descriptor set layout is null for M1 — this branch is a no-op until M2.
     if (m_descriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(ctx.device(), m_descriptorSetLayout, nullptr);
         m_descriptorSetLayout = VK_NULL_HANDLE;

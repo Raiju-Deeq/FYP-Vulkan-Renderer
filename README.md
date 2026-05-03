@@ -95,7 +95,7 @@ Gaussian splatting is deliberately placed last so it does not compete with the c
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/M1-triangle.png" alt="Initial Vulkan Dynamic Rendering test" width="720"/>
+  <img src="docs/prototype-evidence/M1-triangle.png" alt="Initial Vulkan Dynamic Rendering test" width="720"/>
   <br/>
   <em>Initial Vulkan 1.3 test using Dynamic Rendering</em>
 </p>
@@ -225,10 +225,9 @@ All dependencies are managed through vcpkg manifest mode.
 | [GLFW](https://www.glfw.org/)                                | Window creation and input                   |
 | [GLM](https://github.com/g-truc/glm)                         | Math                                        |
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | OBJ model loading                           |
-| [stb_image](https://github.com/nothings/stb)                 | Material loading                             |
+| [stb_image](https://github.com/nothings/stb)                 | Texture loading                              |
 | [spdlog](https://github.com/gabime/spdlog)                   | Logging                                     |
 | [Dear ImGui](https://github.com/ocornut/imgui)               | Optional debug UI                           |
-| [tinyply](https://github.com/ddiakopoulos/tinyply)           | Optional `.ply` loading for Gaussian splats |
 
 ---
 

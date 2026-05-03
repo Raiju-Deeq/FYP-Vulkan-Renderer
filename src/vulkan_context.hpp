@@ -92,8 +92,8 @@ public:
      *    of pre-baked VkRenderPass objects.
      *  - `synchronization2` (Vulkan 1.3) — cleaner barrier API with
      *    `VkImageMemoryBarrier2` and finer pipeline stage masks.
-     *  - `bufferDeviceAddress` (Vulkan 1.2) — lets shaders access buffers
-     *    via raw GPU pointers (needed for Gaussian Splatting in M6).
+     *  - `bufferDeviceAddress` (Vulkan 1.2) — keeps the future Gaussian
+     *    splatting path possible without changing device creation later.
      *
      * @param  window  A valid, already-created GLFW window. GLFW must be
      *                 initialised before calling this function.
@@ -181,10 +181,9 @@ public:
     /**
      * @brief Returns the VMA allocator used for GPU buffers and images.
      *
-     * Milestone 2 needs a lot of short-lived staging buffers and device-local
-     * resources.  VMA owns the memory allocation details so Mesh, Material and
-     * GPU upload code can focus on what is being uploaded instead of manually
-     * choosing memory heaps.
+     * Mesh and texture uploads need short-lived staging buffers plus
+     * device-local resources. VMA owns the memory allocation details so those
+     * modules can focus on what is being uploaded.
      */
     VmaAllocator     allocator()           const { return m_allocator; }
 
@@ -214,7 +213,7 @@ private:
     /// Validation layer debug callback messenger (null in release builds).
     VkDebugUtilsMessengerEXT m_debugMessenger        = VK_NULL_HANDLE;
 
-    /// Vulkan Memory Allocator instance used by M2+ resource upload code.
+    /// Vulkan Memory Allocator instance used by all GPU resource upload code.
     VmaAllocator             m_allocator             = VK_NULL_HANDLE;
 };
 
