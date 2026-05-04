@@ -100,6 +100,12 @@ Gaussian splatting is deliberately placed last so it does not compete with the c
   <em>Initial Vulkan 1.3 test using Dynamic Rendering</em>
 </p>
 
+<p align="center">
+  <img src="docs/prototype-evidence/M2-textured-obj.png" alt="Textured OBJ model rendered in Vulkan" width="720"/>
+  <br/>
+  <em>Textured OBJ model rendered with vertex/index buffers, texture sampling, and basic lighting</em>
+</p>
+
 
 ---
 
