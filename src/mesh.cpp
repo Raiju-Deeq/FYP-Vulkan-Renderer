@@ -17,8 +17,16 @@
 namespace
 {
 /// Fixed correction for the Viking OBJ's source orientation.
+///
+/// I apply this once during import instead of hard-coding the correction in
+/// the render loop.  That keeps the per-frame model matrix focused on scene
+/// placement and animation only.
 constexpr glm::vec3 IMPORT_ROTATION_DEGREES{-90.0f, 0.0f, 0.0f};
 
+/**
+ * @brief Builds the import-space correction matrix for OBJ positions/normals.
+ * @return Matrix that rotates source OBJ data into my renderer's expected axes.
+ */
 glm::mat4 makeImportTransform()
 {
     glm::mat4 transform{1.0f};

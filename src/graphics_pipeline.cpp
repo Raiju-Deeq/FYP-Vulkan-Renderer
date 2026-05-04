@@ -110,10 +110,16 @@ VkShaderModule Pipeline::createShaderModule(VkDevice device,
 /// driver the format(s) of the attachment(s) this pipeline will write to.
 /// It completely replaces the `renderPass` field, which is left as
 /// `VK_NULL_HANDLE`.  The validation layers will confirm this is correct.
+///
+/// **Why polygonMode is a parameter now:**
+/// S2 needs a real wireframe toggle. Vulkan wireframe is not a shader effect;
+/// it is rasterizer state, so I compile two otherwise-identical pipelines:
+/// one with `VK_POLYGON_MODE_FILL` and one with `VK_POLYGON_MODE_LINE`.
 bool Pipeline::init(const VulkanContext& ctx,
                     const std::string&   vertSpvPath,
                     const std::string&   fragSpvPath,
-                    VkFormat             colourFormat)
+                    VkFormat             colourFormat,
+                    VkPolygonMode        polygonMode)
 {
     // ── 1 & 2: Load SPIR-V and create shader modules ──────────────────────
     // Shader modules are only needed during pipeline compilation.  I create
@@ -216,7 +222,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     // lineWidth must be 1.0f unless the wideLines feature is enabled.
     VkPipelineRasterizationStateCreateInfo rasterizer{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.polygonMode = polygonMode;
     rasterizer.cullMode    = VK_CULL_MODE_NONE;
     rasterizer.frontFace   = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.lineWidth   = 1.0f;
@@ -248,7 +254,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     //   - setLayoutCount / pSetLayouts  : descriptor set layouts (UBOs, samplers)
     //   - pushConstantRangeCount        : push constant ranges
     // The mesh shader reads one combined image sampler from set 0, binding 0.
-    // The MVP matrix is small enough for a push constant, so I avoid a UBO here.
+    // The per-draw MVP and debug mode are small enough for push constants.
     VkDescriptorSetLayoutBinding samplerBinding{};
     samplerBinding.binding = 0;
     samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -268,9 +274,9 @@ bool Pipeline::init(const VulkanContext& ctx,
     }
 
     VkPushConstantRange pushConstant{};
-    pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstant.offset = 0;
-    pushConstant.size = sizeof(float) * 16;
+    pushConstant.size = sizeof(DrawPushConstants);
 
     VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     layoutInfo.setLayoutCount = 1;

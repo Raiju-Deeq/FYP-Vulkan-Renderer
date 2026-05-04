@@ -78,6 +78,10 @@ static constexpr char VERT_SPV[] = "shaders/mesh.vert.spv";
 static constexpr char FRAG_SPV[] = "shaders/mesh.frag.spv";
 static constexpr char MODEL_PATH[] = "assets/models/viking_room.obj";
 static constexpr char TEXTURE_PATH[] = "assets/textures/viking_room.png";
+
+/// Small scene-space offset used to keep the Viking model centred in the view.
+/// I keep this as a named constant so I can tune the placement without touching
+/// the OBJ import transform or camera setup.
 static constexpr glm::vec3 MODEL_OFFSET{0.0f, -0.35f, 0.0f};
 
 // =============================================================================
@@ -131,11 +135,21 @@ int Application::run()
         return EXIT_FAILURE;
     }
 
-    // ── Pipeline ──────────────────────────────────────────────────────────
-    // I compile the mesh shaders against the current swapchain colour format
-    // because Dynamic Rendering validates that the pipeline and attachment match.
-    Pipeline pipeline;
-    if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
+    // ── Pipelines ─────────────────────────────────────────────────────────
+    // I keep two mesh pipelines for S2: solid fill for normal rendering and
+    // line mode for the ImGui wireframe checkbox.  Wireframe is rasterizer
+    // state in Vulkan, so it has to be a separate pipeline.
+    Pipeline solidPipeline;
+    if (!solidPipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
+        swap.destroy(ctx);
+        ctx.destroy();
+        windowSystem.destroy();
+        return EXIT_FAILURE;
+    }
+
+    Pipeline wireframePipeline;
+    if (!wireframePipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format(), VK_POLYGON_MODE_LINE)) {
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -144,7 +158,8 @@ int Application::run()
 
     LoadedMesh loadedMesh{};
     if (!loadObjMesh(MODEL_PATH, loadedMesh)) {
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -153,7 +168,8 @@ int Application::run()
 
     Mesh mesh;
     if (!mesh.upload(ctx, loadedMesh.vertices, loadedMesh.indices)) {
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -163,7 +179,8 @@ int Application::run()
     LoadedTexture loadedTexture{};
     if (!loadRgba8Texture(TEXTURE_PATH, loadedTexture)) {
         mesh.destroy(ctx);
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -171,9 +188,10 @@ int Application::run()
     }
 
     Material material;
-    if (!material.init(ctx, loadedTexture, pipeline.descriptorSetLayout())) {
+    if (!material.init(ctx, loadedTexture, solidPipeline.descriptorSetLayout())) {
         mesh.destroy(ctx);
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -188,7 +206,8 @@ int Application::run()
     if (!renderer.init(ctx, swap)) {
         material.destroy(ctx);
         mesh.destroy(ctx);
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -200,7 +219,8 @@ int Application::run()
         renderer.destroy(ctx);
         material.destroy(ctx);
         mesh.destroy(ctx);
-        pipeline.destroy(ctx);
+        wireframePipeline.destroy(ctx);
+        solidPipeline.destroy(ctx);
         swap.destroy(ctx);
         ctx.destroy();
         windowSystem.destroy();
@@ -215,6 +235,12 @@ int Application::run()
     int frametimeOffset = 0;
     auto lastFrameTime  = std::chrono::high_resolution_clock::now();
     const auto appStartTime = lastFrameTime;
+
+    // S2 debug controls. These are independent on purpose:
+    // - Wireframe swaps between the solid and line-mode pipelines.
+    // - Normals view changes the fragment shader output through a push constant.
+    bool showWireframe = false;
+    bool showNormals = false;
 
     // ── Render loop ───────────────────────────────────────────────────────
     while (!windowSystem.shouldClose()) {
@@ -253,6 +279,12 @@ int Application::run()
         snprintf(overlay, sizeof(overlay), "%.2f ms", dt);
         ImGui::PlotLines("##ft", frametimeHistory.data(), FRAMETIME_HISTORY,
                          frametimeOffset, overlay, 0.0f, 50.0f, ImVec2(0.0f, 80.0f));
+        ImGui::Separator();
+
+        // S2: small mesh inspection controls for the report/demo.
+        // Wireframe shows triangle topology; normals view shows imported normals.
+        ImGui::Checkbox("Wireframe", &showWireframe);
+        ImGui::Checkbox("Normals view", &showNormals);
         ImGui::End();
 
         ImGui::Render();
@@ -281,7 +313,13 @@ int Application::run()
         projection[1][1] *= -1.0f;
         const glm::mat4 mvp = projection * view * model;
 
-        if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material, mvp)) {
+        // The two checkboxes map directly to the two debug systems:
+        // pipeline state for wireframe, shader state for normal visualisation.
+        const Pipeline& activePipeline = showWireframe ? wireframePipeline : solidPipeline;
+        const DebugViewMode debugViewMode = showNormals ? DebugViewMode::Normals
+                                                        : DebugViewMode::Lit;
+
+        if (!renderer.drawFrame(ctx, swap, activePipeline, mesh, material, mvp, debugViewMode)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
             // I must wait for all in-flight GPU work to finish before
@@ -311,17 +349,22 @@ int Application::run()
                 break;
             }
 
-            // I must also recreate the pipeline because the colour attachment
+            // I must also recreate the pipelines because the colour attachment
             // format *could* have changed after a swapchain rebuild.  In practice
             // the format rarely changes, but the spec does not guarantee it stays
             // the same, so rebuilding is the correct approach.
             material.destroy(ctx);
-            pipeline.destroy(ctx);
-            if (!pipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
-                spdlog::error("Application: pipeline rebuild failed; exiting");
+            wireframePipeline.destroy(ctx);
+            solidPipeline.destroy(ctx);
+            if (!solidPipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format())) {
+                spdlog::error("Application: solid pipeline rebuild failed; exiting");
                 break;
             }
-            if (!material.init(ctx, loadedTexture, pipeline.descriptorSetLayout())) {
+            if (!wireframePipeline.init(ctx, VERT_SPV, FRAG_SPV, swap.format(), VK_POLYGON_MODE_LINE)) {
+                spdlog::error("Application: wireframe pipeline rebuild failed; exiting");
+                break;
+            }
+            if (!material.init(ctx, loadedTexture, solidPipeline.descriptorSetLayout())) {
                 spdlog::error("Application: material rebuild failed; exiting");
                 break;
             }
@@ -349,7 +392,8 @@ int Application::run()
     renderer.destroy(ctx);
     material.destroy(ctx);
     mesh.destroy(ctx);
-    pipeline.destroy(ctx);
+    wireframePipeline.destroy(ctx);
+    solidPipeline.destroy(ctx);
     swap.destroy(ctx);
     ctx.destroy();
 

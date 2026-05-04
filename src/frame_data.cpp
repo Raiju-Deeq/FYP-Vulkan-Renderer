@@ -340,7 +340,8 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
                           const Pipeline&      pipeline,
                           const Mesh&          mesh,
                           const Material&      material,
-                          const glm::mat4&     mvp)
+                          const glm::mat4&     mvp,
+                          DebugViewMode        debugMode)
 {
     // ── Step 1: Wait for in-flight fence ──────────────────────────────────
     // Block the CPU until the GPU finishes all commands submitted in the
@@ -470,14 +471,20 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     // ── Step 8: Bind pipeline and draw ────────────────────────────────────
+    // The selected pipeline may be solid or wireframe. The selected debug mode
+    // is pushed separately so the fragment shader can switch to normals view.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
     material.bindDescriptorSet(cmd, pipeline.layout());
+    const DrawPushConstants pushConstants{
+        .mvp = mvp,
+        .debugMode = static_cast<int32_t>(debugMode)
+    };
     vkCmdPushConstants(cmd,
                        pipeline.layout(),
-                       VK_SHADER_STAGE_VERTEX_BIT,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0,
-                       sizeof(glm::mat4),
-                       &mvp);
+                       sizeof(DrawPushConstants),
+                       &pushConstants);
     mesh.bind(cmd);
     mesh.draw(cmd);
 

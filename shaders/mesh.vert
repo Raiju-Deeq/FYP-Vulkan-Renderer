@@ -2,6 +2,9 @@
 
 layout(push_constant) uniform PushConstants {
     mat4 mvp;
+    // S2 debug mode is read by mesh.frag; it stays in this shared block so the
+    // C++ push-constant layout matches both shader stages.
+    int debugMode;
 } pc;
 
 layout(location = 0) in vec3 inPosition;

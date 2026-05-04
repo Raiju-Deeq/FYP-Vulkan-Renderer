@@ -48,6 +48,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "graphics_pipeline.hpp"
+
 class VulkanContext;
 class SwapChain;
 class Pipeline;
@@ -66,7 +68,7 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
  * ## Ownership model
  * - **I own:** `VkCommandPool`, `VkCommandBuffer[]`, `VkSemaphore[]` (both
  *   arrays), `VkFence[]`.
- * - **I do NOT own:** swapchain images, pipeline, VulkanContext handles.
+ * - **I do NOT own:** swapchain images, pipelines, VulkanContext handles.
  *
  * ## Dependency
  * I must be initialised after both VulkanContext and SwapChain.  I read
@@ -77,7 +79,7 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
  *   Renderer renderer;
  *   renderer.init(ctx, swap);
  *   while (!done) {
- *       if (!renderer.drawFrame(ctx, swap, pipeline)) {
+ *       if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material, mvp, debugMode)) {
  *           renderer.waitIdle(ctx);
  *           swap.rebuild(ctx, w, h);
  *           pipeline.destroy(ctx);
@@ -214,6 +216,8 @@ public:
      * @param  mesh     Uploaded mesh to bind and draw.
      * @param  material Material descriptor set to bind before drawing.
      * @param  mvp      Model-view-projection matrix pushed to the vertex shader.
+     * @param  debugMode Fragment debug view selected from the ImGui overlay.
+     *                   Wireframe is handled by choosing a different Pipeline.
      * @return true     Frame submitted and queued for presentation successfully.
      * @return false    Swapchain is out of date (`VK_ERROR_OUT_OF_DATE_KHR` or
      *                  `VK_SUBOPTIMAL_KHR`) — caller must rebuild the swapchain
@@ -224,7 +228,8 @@ public:
                    const Pipeline&      pipeline,
                    const Mesh&          mesh,
                    const Material&      material,
-                   const glm::mat4&     mvp);
+                   const glm::mat4&     mvp,
+                   DebugViewMode        debugMode);
 
     /**
      * @brief Blocks until all queued GPU work has completed.

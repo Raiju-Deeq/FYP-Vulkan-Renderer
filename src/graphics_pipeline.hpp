@@ -25,7 +25,7 @@
  * ## Mesh pipeline specifics
  *  - Vertex input matches the `Vertex` layout from mesh.hpp.
  *  - Descriptor set 0 binds the sampled material texture.
- *  - Push constants provide the model-view-projection matrix.
+ *  - Push constants provide the model-view-projection matrix and debug mode.
  *  - Dynamic viewport + scissor keep resize handling simple.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
@@ -36,10 +36,42 @@
 #define FYP_VULKAN_RENDERER_PIPELINE_HPP
 
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 class VulkanContext;
+
+/**
+ * @enum DebugViewMode
+ * @brief Fragment-shader debug view selected from the ImGui overlay.
+ *
+ * I use this for the S2 normals view.  The renderer still draws the same mesh,
+ * but the fragment shader swaps its output from textured lighting to normal
+ * colours so I can inspect whether normals are imported and interpolated
+ * correctly.
+ */
+enum class DebugViewMode : int32_t
+{
+    Lit = 0,    ///< Normal textured lighting path.
+    Normals = 1 ///< Visualise interpolated mesh normals as RGB.
+};
+
+/**
+ * @struct DrawPushConstants
+ * @brief Per-draw data shared by the mesh vertex and fragment shaders.
+ *
+ * This keeps the debug toggle lightweight.  I push one small block each draw:
+ * the vertex shader reads `mvp`, and the fragment shader reads `debugMode`.
+ * That means the ImGui checkbox can change the debug view without rebuilding
+ * descriptor sets or buffers.
+ */
+struct DrawPushConstants
+{
+    glm::mat4 mvp{1.0f};      ///< Model-view-projection matrix.
+    int32_t   debugMode = 0;  ///< Matches DebugViewMode in mesh.frag.
+};
 
 /**
  * @class Pipeline
@@ -94,13 +126,16 @@ public:
      * @param  fragSpvPath   Filesystem path to the compiled fragment shader `.spv`.
      * @param  colourFormat  Swapchain image format — must match the attachment
      *                       format used in `vkCmdBeginRendering`.
+     * @param  polygonMode   Fill mode for this pipeline. I pass FILL for the
+     *                       normal pipeline and LINE for the S2 wireframe pipeline.
      * @return true          on success.
      * @return false         if shaders cannot be read or any Vulkan call fails.
      */
     bool init(const VulkanContext& ctx,
               const std::string&   vertSpvPath,
               const std::string&   fragSpvPath,
-              VkFormat             colourFormat);
+              VkFormat             colourFormat,
+              VkPolygonMode        polygonMode = VK_POLYGON_MODE_FILL);
 
     /**
      * @brief Destroys the pipeline, layout and descriptor set layout.

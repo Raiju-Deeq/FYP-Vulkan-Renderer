@@ -92,6 +92,8 @@ public:
      *    of pre-baked VkRenderPass objects.
      *  - `synchronization2` (Vulkan 1.3) — cleaner barrier API with
      *    `VkImageMemoryBarrier2` and finer pipeline stage masks.
+     *  - `fillModeNonSolid` — allows my S2 debug wireframe checkbox to switch
+     *    to a pipeline using `VK_POLYGON_MODE_LINE`.
      *  - `bufferDeviceAddress` (Vulkan 1.2) — keeps the future Gaussian
      *    splatting path possible without changing device creation later.
      *

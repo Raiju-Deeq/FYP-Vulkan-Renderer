@@ -118,6 +118,12 @@ bool VulkanContext::init(GLFWwindow* window)
     //   VkPhysicalDeviceVulkan12Features:
     //   - bufferDeviceAddress → keeps the future Gaussian splatting path possible
     //                           without changing device creation later.
+    //
+    //   VkPhysicalDeviceFeatures:
+    //   - fillModeNonSolid → lets the S2 debug pipeline render true wireframe.
+    VkPhysicalDeviceFeatures features10{};
+    features10.fillModeNonSolid = VK_TRUE;
+
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
     };
@@ -134,6 +140,7 @@ bool VulkanContext::init(GLFWwindow* window)
     vkb::PhysicalDeviceSelector selector(vkbInstance, m_surface);
     auto physResult = selector
         .set_minimum_version(1, 3)
+        .set_required_features(features10)
         .set_required_features_13(features13)
         .set_required_features_12(features12)
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete) // I prefer a dGPU over iGPU
