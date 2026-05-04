@@ -1,6 +1,6 @@
 /**
  * @file texture.hpp
- * @brief One sampled albedo texture and descriptor set for the M2 mesh path.
+ * @brief Texture loading plus the sampled material descriptor used by meshes.
  */
 
 #ifndef FYP_VULKAN_RENDERER_TEXTURE_HPP
@@ -52,6 +52,11 @@ class Material
 public:
     /**
      * @brief Uploads texture pixels to the GPU and creates the descriptor set.
+     *
+     * Re-initialisation is non-destructive until the new texture, sampler and
+     * descriptor set are all ready.  That way a failed runtime texture reload
+     * leaves the currently displayed material intact.
+     *
      * @param ctx Initialised Vulkan context.
      * @param texture CPU-side RGBA8 texture data.
      * @param layout Descriptor set layout from Pipeline.

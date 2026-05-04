@@ -129,9 +129,6 @@ bool Mesh::upload(const VulkanContext&         ctx,
                   const std::vector<Vertex>&   vertices,
                   const std::vector<uint32_t>& indices)
 {
-    // Re-uploading a mesh should replace the old GPU buffers, not leak them.
-    destroy(ctx);
-
     if (vertices.empty() || indices.empty()) {
         spdlog::error("Mesh: upload called with empty geometry");
         return false;
@@ -159,6 +156,9 @@ bool Mesh::upload(const VulkanContext&         ctx,
         GpuBuffer::destroyBuffer(ctx, vertexResource);
         return false;
     }
+
+    // Only replace the old buffers after the new upload has succeeded.
+    destroy(ctx);
 
     m_vertexBuffer = vertexResource.buffer;
     m_vertexAlloc = vertexResource.allocation;

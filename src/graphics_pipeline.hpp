@@ -126,8 +126,11 @@ public:
      * @param  fragSpvPath   Filesystem path to the compiled fragment shader `.spv`.
      * @param  colourFormat  Swapchain image format — must match the attachment
      *                       format used in `vkCmdBeginRendering`.
+     * @param  depthFormat   Depth image format used by Dynamic Rendering.
      * @param  polygonMode   Fill mode for this pipeline. I pass FILL for the
      *                       normal pipeline and LINE for the S2 wireframe pipeline.
+     * @param  cullMode      Face-culling mode. Use BACK to hide inside faces,
+     *                       or NONE for double-sided/debug assets.
      * @return true          on success.
      * @return false         if shaders cannot be read or any Vulkan call fails.
      */
@@ -135,7 +138,9 @@ public:
               const std::string&   vertSpvPath,
               const std::string&   fragSpvPath,
               VkFormat             colourFormat,
-              VkPolygonMode        polygonMode = VK_POLYGON_MODE_FILL);
+              VkFormat             depthFormat,
+              VkPolygonMode        polygonMode = VK_POLYGON_MODE_FILL,
+              VkCullModeFlags      cullMode = VK_CULL_MODE_BACK_BIT);
 
     /**
      * @brief Destroys the pipeline, layout and descriptor set layout.

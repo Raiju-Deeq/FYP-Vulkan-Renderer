@@ -105,10 +105,14 @@ bool Material::init(const VulkanContext&              ctx,
                     const LoadedTexture& texture,
                     VkDescriptorSetLayout             layout)
 {
-    // Re-initialising a material should replace all GPU-side texture state.
-    destroy(ctx);
+    // Build replacement state in local variables first.  If any step fails,
+    // the currently bound material still owns its previous valid GPU objects.
+    GpuBuffer::ImageResource newAlbedo{};
+    VkSampler newSampler = VK_NULL_HANDLE;
+    VkDescriptorPool newDescriptorPool = VK_NULL_HANDLE;
+    VkDescriptorSet newDescriptorSet = VK_NULL_HANDLE;
 
-    if (!GpuBuffer::uploadTexture2D(ctx, texture, m_albedo)) {
+    if (!GpuBuffer::uploadTexture2D(ctx, texture, newAlbedo)) {
         spdlog::error("Material: failed to upload albedo texture");
         return false;
     }
@@ -124,9 +128,9 @@ bool Material::init(const VulkanContext&              ctx,
     samplerInfo.maxLod = 0.0f;
     samplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(ctx.device(), &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS) {
+    if (vkCreateSampler(ctx.device(), &samplerInfo, nullptr, &newSampler) != VK_SUCCESS) {
         spdlog::error("Material: failed to create sampler");
-        destroy(ctx);
+        GpuBuffer::destroyImage(ctx, newAlbedo);
         return false;
     }
 
@@ -139,38 +143,49 @@ bool Material::init(const VulkanContext&              ctx,
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
 
-    if (vkCreateDescriptorPool(ctx.device(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(ctx.device(), &poolInfo, nullptr, &newDescriptorPool) != VK_SUCCESS) {
         spdlog::error("Material: failed to create descriptor pool");
-        destroy(ctx);
+        vkDestroySampler(ctx.device(), newSampler, nullptr);
+        GpuBuffer::destroyImage(ctx, newAlbedo);
         return false;
     }
 
     VkDescriptorSetAllocateInfo allocInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    allocInfo.descriptorPool = m_descriptorPool;
+    allocInfo.descriptorPool = newDescriptorPool;
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &layout;
 
-    if (vkAllocateDescriptorSets(ctx.device(), &allocInfo, &m_descriptorSet) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(ctx.device(), &allocInfo, &newDescriptorSet) != VK_SUCCESS) {
         spdlog::error("Material: failed to allocate descriptor set");
-        destroy(ctx);
+        vkDestroyDescriptorPool(ctx.device(), newDescriptorPool, nullptr);
+        vkDestroySampler(ctx.device(), newSampler, nullptr);
+        GpuBuffer::destroyImage(ctx, newAlbedo);
         return false;
     }
 
     VkDescriptorImageInfo imageInfo{};
-    imageInfo.sampler = m_sampler;
-    imageInfo.imageView = m_albedo.view;
+    imageInfo.sampler = newSampler;
+    imageInfo.imageView = newAlbedo.view;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     // This descriptor is what connects set=0,binding=0 in mesh.frag to my
     // uploaded image view and sampler.
     VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    write.dstSet = m_descriptorSet;
+    write.dstSet = newDescriptorSet;
     write.dstBinding = 0;
     write.descriptorCount = 1;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.pImageInfo = &imageInfo;
 
     vkUpdateDescriptorSets(ctx.device(), 1, &write, 0, nullptr);
+
+    // Only replace the old material after the new texture state is complete.
+    destroy(ctx);
+    m_albedo = newAlbedo;
+    m_sampler = newSampler;
+    m_descriptorPool = newDescriptorPool;
+    m_descriptorSet = newDescriptorSet;
+
     spdlog::info("Material: descriptor set ready for '{}'", texture.path);
     return true;
 }

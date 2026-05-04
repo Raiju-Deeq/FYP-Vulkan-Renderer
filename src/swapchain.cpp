@@ -94,6 +94,11 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
     }
     m_imageViews = viewsResult.value();
 
+    if (!createDepthResources(ctx)) {
+        destroy(ctx);
+        return false;
+    }
+
     spdlog::info("SwapChain: {}x{}  images={}  format={}",
         m_extent.width, m_extent.height,
         m_images.size(),
@@ -114,6 +119,17 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
 /// them — a use-after-free that the validation layer would catch.
 void SwapChain::destroy(const VulkanContext& ctx)
 {
+    for (VkImageView view : m_depthImageViews) {
+        vkDestroyImageView(ctx.device(), view, nullptr);
+    }
+    m_depthImageViews.clear();
+
+    for (size_t i = 0; i < m_depthImages.size(); ++i) {
+        vmaDestroyImage(ctx.allocator(), m_depthImages[i], m_depthAllocations[i]);
+    }
+    m_depthImages.clear();
+    m_depthAllocations.clear();
+
     // Destroy each image view.  The raw VkImages are owned by the swapchain
     // (not by me) so I intentionally do NOT call vkDestroyImage here.
     for (VkImageView view : m_imageViews) {
@@ -129,6 +145,7 @@ void SwapChain::destroy(const VulkanContext& ctx)
 
     // Reset metadata to safe defaults so any accidental access is obvious.
     m_format = VK_FORMAT_UNDEFINED;
+    m_depthFormat = VK_FORMAT_D32_SFLOAT;
     m_extent = {0, 0};
 }
 
@@ -176,4 +193,55 @@ VkResult SwapChain::acquireNextImage(VkDevice device,
 {
     return vkAcquireNextImageKHR(device, m_swapchain, UINT64_MAX,
                                   semaphore, VK_NULL_HANDLE, &outIndex);
+}
+
+bool SwapChain::createDepthResources(const VulkanContext& ctx)
+{
+    const uint32_t depthImageCount = imageCount();
+
+    // I use D32_SFLOAT because this renderer only needs depth testing, not
+    // stencil.  The image count matches the swapchain so each acquired colour
+    // image has a matching depth attachment for the same frame.
+    VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = m_depthFormat;
+    imageInfo.extent = {m_extent.width, m_extent.height, 1};
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+    m_depthImages.assign(depthImageCount, VK_NULL_HANDLE);
+    m_depthAllocations.assign(depthImageCount, VK_NULL_HANDLE);
+    m_depthImageViews.assign(depthImageCount, VK_NULL_HANDLE);
+
+    for (uint32_t i = 0; i < depthImageCount; ++i) {
+        if (vmaCreateImage(ctx.allocator(), &imageInfo, &allocInfo,
+                           &m_depthImages[i],
+                           &m_depthAllocations[i],
+                           nullptr) != VK_SUCCESS) {
+            spdlog::error("SwapChain: failed to create depth image {}", i);
+            return false;
+        }
+
+        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        viewInfo.image = m_depthImages[i];
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = m_depthFormat;
+        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+
+        if (vkCreateImageView(ctx.device(), &viewInfo, nullptr,
+                              &m_depthImageViews[i]) != VK_SUCCESS) {
+            spdlog::error("SwapChain: failed to create depth image view {}", i);
+            return false;
+        }
+    }
+
+    return true;
 }

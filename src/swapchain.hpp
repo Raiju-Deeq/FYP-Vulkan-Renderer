@@ -33,16 +33,17 @@
 #define FYP_VULKAN_RENDERER_SWAPCHAIN_HPP
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <vector>
 
 class VulkanContext;
 
 /**
  * @class SwapChain
- * @brief RAII wrapper for `VkSwapchainKHR`, its images and image views.
+ * @brief RAII wrapper for `VkSwapchainKHR`, its colour views and depth images.
  *
  * ## Ownership model
- * - **I own:** `VkSwapchainKHR`, `VkImageView[]`.
+ * - **I own:** `VkSwapchainKHR`, colour `VkImageView[]`, and depth images/views.
  * - **I do NOT own:** `VkImage[]`. Swapchain images belong to the driver;
  *   they are destroyed automatically when I destroy the swapchain.
  *
@@ -180,12 +181,37 @@ public:
     /// (UNDEFINED → COLOR_ATTACHMENT_OPTIMAL and back to PRESENT_SRC_KHR).
     const std::vector<VkImage>& images() const { return m_images; }
 
+    /// @brief Depth format used by the Dynamic Rendering pipeline.
+    VkFormat depthFormat() const { return m_depthFormat; }
+
+    /// @brief Depth image views — one per swapchain image.
+    const std::vector<VkImageView>& depthImageViews() const { return m_depthImageViews; }
+
+    /// @brief Depth image handles — one per swapchain image.
+    const std::vector<VkImage>& depthImages() const { return m_depthImages; }
+
 private:
+    /**
+     * @brief Creates depth images/views matching the current swapchain extent.
+     *
+     * Dynamic Rendering still needs a real depth attachment for correct 3D
+     * ordering.  I keep the depth images beside the swapchain because they must
+     * be rebuilt whenever the swapchain extent or image count changes.
+     *
+     * @param ctx Vulkan context that owns the VkDevice and VMA allocator.
+     * @return true when every depth image and view was created.
+     */
+    bool createDepthResources(const VulkanContext& ctx);
+
     VkSwapchainKHR           m_swapchain  = VK_NULL_HANDLE;      ///< My owned swapchain handle.
     VkFormat                 m_format     = VK_FORMAT_UNDEFINED;  ///< Negotiated image format.
+    VkFormat                 m_depthFormat = VK_FORMAT_D32_SFLOAT; ///< Depth attachment format.
     VkExtent2D               m_extent     = {0, 0};               ///< Current pixel dimensions.
     std::vector<VkImage>     m_images;   ///< Driver-owned swapchain images (I must NOT destroy these).
     std::vector<VkImageView> m_imageViews; ///< My owned views — one per image, same lifetime.
+    std::vector<VkImage>     m_depthImages; ///< VMA-owned depth images matching swapchain extent.
+    std::vector<VmaAllocation> m_depthAllocations; ///< VMA allocations backing depth images.
+    std::vector<VkImageView> m_depthImageViews; ///< Views used as Dynamic Rendering depth attachments.
 };
 
 #endif // FYP_VULKAN_RENDERER_SWAPCHAIN_HPP

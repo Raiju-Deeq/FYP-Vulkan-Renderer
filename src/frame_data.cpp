@@ -261,6 +261,7 @@ bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwi
     VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
     pipelineRenderingInfo.colorAttachmentCount    = 1;
     pipelineRenderingInfo.pColorAttachmentFormats = &colorFormat;
+    pipelineRenderingInfo.depthAttachmentFormat   = swap.depthFormat();
 
     ImGui_ImplVulkan_InitInfo initInfo{};
     initInfo.Instance                    = ctx.instance();
@@ -422,9 +423,25 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     toRender.image         = swapImage;
     toRender.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
+    VkImage depthImage = swap.depthImages()[imageIndex];
+    VkImageMemoryBarrier2 depthToRender{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+    depthToRender.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+    depthToRender.srcAccessMask = VK_ACCESS_2_NONE;
+    depthToRender.dstStageMask =
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+    depthToRender.dstAccessMask =
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    depthToRender.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthToRender.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthToRender.image = depthImage;
+    depthToRender.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+
+    VkImageMemoryBarrier2 renderBarriers[] = {toRender, depthToRender};
     VkDependencyInfo dep1{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-    dep1.imageMemoryBarrierCount = 1;
-    dep1.pImageMemoryBarriers    = &toRender;
+    dep1.imageMemoryBarrierCount = 2;
+    dep1.pImageMemoryBarriers    = renderBarriers;
     vkCmdPipelineBarrier2(cmd, &dep1);
 
     // ── Step 6: Begin Dynamic Rendering ───────────────────────────────────
@@ -444,12 +461,22 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     colourAttach.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
     colourAttach.clearValue  = clearBlack;
 
+    VkClearValue clearDepth{};
+    clearDepth.depthStencil = {1.0f, 0};
+
+    VkRenderingAttachmentInfo depthAttach{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    depthAttach.imageView = swap.depthImageViews()[imageIndex];
+    depthAttach.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttach.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttach.clearValue = clearDepth;
+
     VkRenderingInfo renderingInfo{VK_STRUCTURE_TYPE_RENDERING_INFO};
     renderingInfo.renderArea           = {{0, 0}, swap.extent()}; // full image, no offset
     renderingInfo.layerCount           = 1;                       // not a layered render
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments    = &colourAttach;
-    // No depth/stencil yet; this path currently renders one simple mesh pass.
+    renderingInfo.pDepthAttachment     = &depthAttach;
 
     vkCmdBeginRendering(cmd, &renderingInfo);
 

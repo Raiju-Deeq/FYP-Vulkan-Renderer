@@ -115,11 +115,17 @@ VkShaderModule Pipeline::createShaderModule(VkDevice device,
 /// S2 needs a real wireframe toggle. Vulkan wireframe is not a shader effect;
 /// it is rasterizer state, so I compile two otherwise-identical pipelines:
 /// one with `VK_POLYGON_MODE_FILL` and one with `VK_POLYGON_MODE_LINE`.
+///
+/// I also pass cullMode in because newly loaded OBJ files may be clean
+/// closed meshes or deliberately double-sided assets. Back-face culling hides
+/// inside faces for normal meshes, while NONE is still useful for inspection.
 bool Pipeline::init(const VulkanContext& ctx,
                     const std::string&   vertSpvPath,
                     const std::string&   fragSpvPath,
                     VkFormat             colourFormat,
-                    VkPolygonMode        polygonMode)
+                    VkFormat             depthFormat,
+                    VkPolygonMode        polygonMode,
+                    VkCullModeFlags      cullMode)
 {
     // ── 1 & 2: Load SPIR-V and create shader modules ──────────────────────
     // Shader modules are only needed during pipeline compilation.  I create
@@ -217,13 +223,13 @@ bool Pipeline::init(const VulkanContext& ctx,
 
     // ── 4d: Rasteriser ────────────────────────────────────────────────────
     // FILL: draw solid filled triangles (vs. LINE for wireframe).
-    // CULL_MODE_NONE: keeps imported OBJ winding issues visible and avoids
-    // accidentally hiding the model while I am still validating assets.
+    // BACK culling hides inside faces on closed meshes. NONE is available for
+    // double-sided assets or when I need to inspect winding/import problems.
     // lineWidth must be 1.0f unless the wideLines feature is enabled.
     VkPipelineRasterizationStateCreateInfo rasterizer{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     rasterizer.polygonMode = polygonMode;
-    rasterizer.cullMode    = VK_CULL_MODE_NONE;
+    rasterizer.cullMode    = cullMode;
     rasterizer.frontFace   = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.lineWidth   = 1.0f;
 
@@ -232,6 +238,16 @@ bool Pipeline::init(const VulkanContext& ctx,
     VkPipelineMultisampleStateCreateInfo multisampling{
         VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    // Depth test fixes opaque 3D ordering. Without this, triangles render in
+    // index/submission order and parts of the mesh can appear through itself.
+    VkPipelineDepthStencilStateCreateInfo depthStencil{
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
 
     // ── 4f: Colour blend ──────────────────────────────────────────────────
     // One attachment state per colour attachment in the render pass.
@@ -306,6 +322,7 @@ bool Pipeline::init(const VulkanContext& ctx,
         VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
     renderingInfo.colorAttachmentCount    = 1;
     renderingInfo.pColorAttachmentFormats = &colourFormat; // must match acquireNextImage format
+    renderingInfo.depthAttachmentFormat = depthFormat;
 
     // ── 7: Assemble and compile the pipeline ──────────────────────────────
     VkGraphicsPipelineCreateInfo pipelineInfo{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -317,6 +334,7 @@ bool Pipeline::init(const VulkanContext& ctx,
     pipelineInfo.pViewportState      = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState   = &multisampling;
+    pipelineInfo.pDepthStencilState  = &depthStencil;
     pipelineInfo.pColorBlendState    = &colourBlend;
     pipelineInfo.pDynamicState       = &dynamicState;
     pipelineInfo.layout              = m_layout;
