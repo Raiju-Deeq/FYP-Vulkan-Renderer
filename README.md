@@ -84,7 +84,7 @@ Gaussian splatting is deliberately placed last so it does not compete with the c
 
 - [x] **Minimal Vulkan 1.3 pipeline** · vk-bootstrap initialisation, Dynamic Rendering, validation layers, SPIR-V shaders
 - [x] **One textured OBJ model** · tinyobjloader, buffer uploads, texture sampling
-- [ ] **Simple camera control** · orbit or free movement for inspection
+- [x] **Simple camera control** · orbit or free movement for inspection
 - [x] **Basic lighting** · enough to make the mesh readable and demonstrable
 - [ ] **Technical report and evaluation** · implementation rationale, testing, reflection, and limitations
 - [x] **Should Have** · resize-safe swapchain, wireframe or debug normals toggle
