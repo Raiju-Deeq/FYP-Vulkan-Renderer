@@ -42,12 +42,12 @@ The project is designed to stay practical and achievable within a short developm
 
 The core project must include the following:
 
-- [ ] Window creation
-- [ ] Vulkan setup
-- [ ] Dynamic Rendering
-- [ ] Model loading
-- [ ] Camera
-- [ ] Lighting
+- [x] Window creation
+- [x] Vulkan setup
+- [x] Dynamic Rendering
+- [x] Model loading
+- [x] Camera
+- [x] Lighting
 - [ ] Report and evaluation
 
 These are the only features that must be complete for the project to count as successful.
@@ -58,9 +58,9 @@ These are the only features that must be complete for the project to count as su
 
 These are high-priority additions targeted after the core is working.
 
-- [ ] Resize-safe swapchain handling
+- [x] Resize-safe swapchain handling
   - Recreate the swapchain cleanly after window resizes.
-- [ ] Wireframe or debug normals toggle
+- [x] Wireframe or debug normals toggle
   - Add a simple visual debugging mode to help inspect the mesh and explain the pipeline.
 
 ## Stretch Goals
@@ -82,12 +82,12 @@ Gaussian splatting is deliberately placed last so it does not compete with the c
 
 > **Note:** The project is organised by priority rather than by engine-style systems.
 
-- [ ] **Minimal Vulkan 1.3 pipeline** · vk-bootstrap initialisation, Dynamic Rendering, validation layers, SPIR-V shaders
-- [ ] **One textured OBJ model** · tinyobjloader, buffer uploads, texture sampling
+- [x] **Minimal Vulkan 1.3 pipeline** · vk-bootstrap initialisation, Dynamic Rendering, validation layers, SPIR-V shaders
+- [x] **One textured OBJ model** · tinyobjloader, buffer uploads, texture sampling
 - [ ] **Simple camera control** · orbit or free movement for inspection
-- [ ] **Basic lighting** · enough to make the mesh readable and demonstrable
+- [x] **Basic lighting** · enough to make the mesh readable and demonstrable
 - [ ] **Technical report and evaluation** · implementation rationale, testing, reflection, and limitations
-- [ ] **Should Have** · resize-safe swapchain, wireframe or debug normals toggle
+- [x] **Should Have** · resize-safe swapchain, wireframe or debug normals toggle
 - [ ] **Could Have (stretch)** · PBR, mipmaps, Gaussian splats — only after core is complete
 
 ---
