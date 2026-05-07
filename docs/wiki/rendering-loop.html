@@ -1,100 +1,295 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Frame lifecycle and synchronisation guide for Raiju Renderer.">
-  <title>Rendering Loop | Raiju Renderer Wiki</title>
-  <link rel="stylesheet" href="wiki.css">
-</head>
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>Frame lifecycle.</p></div></div>
-      <nav class="nav">
-        <a href="../../index.html">Product page</a>
-        <a href="index.html">Wiki home</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="rendering-loop.html" aria-current="page">Rendering loop</a>
-        <a href="assets-shaders.html">Assets and shaders</a>
-        <a href="api-map.html">API map</a>
-        <a href="troubleshooting.html">Troubleshooting</a>
-      </nav>
-      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/class_renderer.html">Renderer API</a></div>
-    </aside>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Frame lifecycle and synchronisation guide for Raiju Renderer."
+        />
+        <title>Rendering Loop | Raiju Renderer Wiki</title>
+        <link rel="stylesheet" href="wiki.css" />
+    </head>
+    <body>
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="profile">
+                    <div class="avatar">R</div>
+                    <div>
+                        <h1>Raiju Wiki</h1>
+                        <p>Frame lifecycle.</p>
+                    </div>
+                </div>
+                <nav class="nav">
+                    <a href="../../index.html">Product page</a>
+                    <a href="index.html">Wiki home</a>
+                    <a href="getting-started.html">Getting started</a>
+                    <a href="architecture.html">Architecture</a>
+                    <a href="rendering-loop.html" aria-current="page"
+                        >Rendering loop</a
+                    >
+                    <a href="assets-shaders.html">Assets and shaders</a>
+                    <a href="api-map.html">API map</a>
+                    <a href="troubleshooting.html">Troubleshooting</a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a class="button primary" href="api-map.html"
+                        >Open API map</a
+                    >
+                </div>
+            </aside>
 
-    <main class="content">
-      <div class="topbar"><div class="crumb">Wiki / Rendering loop</div></div>
-      <section class="hero" id="overview">
-        <span class="eyebrow">Frame guide</span>
-        <h2>Rendering Loop</h2>
-        <p class="lead">The renderer uses two CPU frame slots and a swapchain image ring. Each frame waits for a reusable CPU slot, acquires a presentable image, records Dynamic Rendering commands, submits them to the graphics queue, then presents the image.</p>
-      </section>
+            <main class="content">
+                <div class="topbar">
+                    <div class="crumb">Wiki / Rendering loop</div>
+                </div>
 
-      <article class="card" id="frame-steps">
-        <div class="meta">Frame sequence</div>
-        <h3>One call to Renderer::drawFrame</h3>
-        <div class="steps">
-          <div class="step"><div><h4>Wait for the frame slot fence</h4><p>The CPU waits for <code>m_inFlightFences[m_currentFrame]</code> so it does not overwrite command buffers or semaphores still used by the GPU.</p></div></div>
-          <div class="step"><div><h4>Acquire a swapchain image</h4><p><code>SwapChain::acquireNextImage</code> returns an image index and arranges for <code>imageAvailable[currentFrame]</code> to be signalled when the image is safe to write.</p></div></div>
-          <div class="step"><div><h4>Reset fence and command buffer</h4><p>The fence is reset only after successful acquire, preventing a deadlock if acquire fails before any GPU work is submitted.</p></div></div>
-          <div class="step"><div><h4>Transition colour and depth images</h4><p><code>vkCmdPipelineBarrier2</code> transitions the swapchain image to <code>COLOR_ATTACHMENT_OPTIMAL</code> and the depth image to <code>DEPTH_ATTACHMENT_OPTIMAL</code>.</p></div></div>
-          <div class="step"><div><h4>Begin Dynamic Rendering</h4><p><code>vkCmdBeginRendering</code> receives the acquired colour image view and matching depth image view. No render pass or framebuffer is created.</p></div></div>
-          <div class="step"><div><h4>Bind and draw</h4><p>The active mesh pipeline is selected from debug UI state, the material descriptor set is bound, push constants pass MVP and debug mode, then the mesh records <code>vkCmdDrawIndexed</code>.</p></div></div>
-          <div class="step"><div><h4>Render ImGui</h4><p>ImGui draw data is recorded inside the same Dynamic Rendering scope so the debug overlay appears over the renderer output.</p></div></div>
-          <div class="step"><div><h4>Transition to present</h4><p>The colour image moves from <code>COLOR_ATTACHMENT_OPTIMAL</code> to <code>PRESENT_SRC_KHR</code> so the presentation engine can display it.</p></div></div>
-          <div class="step"><div><h4>Submit and present</h4><p>Queue submit waits on <code>imageAvailable</code>, signals <code>renderFinished[imageIndex]</code>, and signals the frame fence. Present waits on the per-image render-finished semaphore.</p></div></div>
+                <section class="hero" id="overview">
+                    <span class="eyebrow">Frame guide</span>
+                    <h2>Rendering Loop</h2>
+                    <p class="lead">
+                        The renderer uses two CPU frame slots and a swapchain
+                        image ring. Each frame waits for a reusable CPU slot,
+                        acquires a presentable image, records Dynamic Rendering
+                        commands, submits them to the graphics queue, then
+                        presents the image.
+                    </p>
+                </section>
+
+                <article class="card" id="frame-steps">
+                    <div class="meta">Frame sequence</div>
+                    <h3>One call to <code>Renderer::drawFrame</code></h3>
+                    <div class="steps">
+                        <div class="step">
+                            <div>
+                                <h4>Wait for the frame slot fence</h4>
+                                <p>
+                                    The CPU waits for
+                                    <code
+                                        >m_inFlightFences[m_currentFrame]</code
+                                    >
+                                    so it does not overwrite command buffers or
+                                    semaphores still used by the GPU.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Acquire a swapchain image</h4>
+                                <p>
+                                    <code>SwapChain::acquireNextImage</code>
+                                    returns an image index and arranges for
+                                    <code>imageAvailable[currentFrame]</code> to
+                                    be signalled when the image is safe to
+                                    write.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Reset fence and command buffer</h4>
+                                <p>
+                                    The fence is reset only after successful
+                                    acquire, preventing a deadlock if acquire
+                                    fails before any GPU work is submitted.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Transition colour and depth images</h4>
+                                <p>
+                                    <code>vkCmdPipelineBarrier2</code>
+                                    transitions the swapchain image to
+                                    <code>COLOR_ATTACHMENT_OPTIMAL</code> and
+                                    the depth image to
+                                    <code>DEPTH_ATTACHMENT_OPTIMAL</code>.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Begin Dynamic Rendering</h4>
+                                <p>
+                                    <code>vkCmdBeginRendering</code> receives
+                                    the acquired colour image view and matching
+                                    depth image view. No render pass or
+                                    framebuffer is created.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Bind and draw</h4>
+                                <p>
+                                    The active mesh pipeline is selected from
+                                    debug UI state, the material descriptor set
+                                    is bound, push constants pass MVP and debug
+                                    mode, then the mesh records
+                                    <code>vkCmdDrawIndexed</code>.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Render ImGui</h4>
+                                <p>
+                                    ImGui draw data is recorded inside the same
+                                    Dynamic Rendering scope so the debug overlay
+                                    appears over the renderer output.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Transition to present</h4>
+                                <p>
+                                    The colour image moves from
+                                    <code>COLOR_ATTACHMENT_OPTIMAL</code> to
+                                    <code>PRESENT_SRC_KHR</code> so the
+                                    presentation engine can display it.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div>
+                                <h4>Submit and present</h4>
+                                <p>
+                                    Queue submit waits on
+                                    <code>imageAvailable</code>, signals
+                                    <code>renderFinished[imageIndex]</code>, and
+                                    signals the frame fence. Present waits on
+                                    the per-image render-finished semaphore.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card" id="sync">
+                    <div class="meta">Synchronisation</div>
+                    <h3>Why the semaphore arrays are indexed differently</h3>
+                    <div class="grid">
+                        <div class="tile">
+                            <strong><code>imageAvailable</code></strong>
+                            <p>
+                                Indexed by frame slot. The frame fence ensures a
+                                slot is not reused until its previous GPU
+                                submission has finished.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong><code>renderFinished</code></strong>
+                            <p>
+                                Indexed by swapchain image index. Presentation
+                                can hold this semaphore after queue submit, so
+                                tying it to the image prevents unsafe reuse.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong><code>inFlightFences</code></strong>
+                            <p>
+                                Indexed by frame slot. These are CPU-visible
+                                wait objects used to stop the CPU from getting
+                                too far ahead of GPU work.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong><code>MAX_FRAMES_IN_FLIGHT</code></strong>
+                            <p>
+                                Set to 2. The CPU can prepare one frame while
+                                the GPU executes another without sharing command
+                                buffers between active frames.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card" id="resize">
+                    <div class="meta">Resize recovery</div>
+                    <h3>What happens when the swapchain is out of date</h3>
+                    <p>
+                        <code>drawFrame</code> returns <code>false</code> on
+                        <code>VK_ERROR_OUT_OF_DATE_KHR</code> or
+                        <code>VK_SUBOPTIMAL_KHR</code>.
+                        <code>Application::run</code> then waits for the device
+                        to idle, waits for a non-zero framebuffer size, and
+                        rebuilds the dependent objects.
+                    </p>
+                    <pre class="code">
+renderer.waitIdle(ctx);
+swap.rebuild(ctx, framebufferWidth, framebufferHeight);
+renderer.recreateSwapchainSync(ctx, swap);
+material.destroy(ctx);
+destroyMeshPipelines(ctx, pipelines);
+initMeshPipelines(ctx, swap.format(), swap.depthFormat(), pipelines);
+material.init(ctx, loadedTexture, pipelines.solid.descriptorSetLayout());
+renderer.recreateImGui(ctx, swap, window);</pre
+                    >
+                </article>
+
+                <article class="card" id="source-links">
+                    <div class="meta">Implementation overview</div>
+                    <h3>Where this logic lives</h3>
+                    <div class="grid">
+                        <div class="tile">
+                            <strong>Renderer</strong>
+                            <p>
+                                Frame resources, ImGui setup, draw loop,
+                                waiting, and teardown are handled by the
+                                renderer implementation in the frame data
+                                module.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Frame data</strong>
+                            <p>
+                                Command recording, image layout transitions,
+                                Dynamic Rendering setup, submit, and present are
+                                implemented in the frame data source files.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>SwapChain</strong>
+                            <p>
+                                Image acquisition, image views, depth resources,
+                                and rebuild behaviour are owned by the swapchain
+                                module.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Pipeline</strong>
+                            <p>
+                                Dynamic Rendering pipeline formats and
+                                fixed-function state are constructed in the
+                                pipeline module used by the renderer.
+                            </p>
+                        </div>
+                    </div>
+                    <p class="lead">
+                        For file-level details and member lists, use the
+                        <a class="inline-link" href="api-map.html">API map</a>
+                        to open the relevant entries in the API reference.
+                    </p>
+                </article>
+
+                <footer>
+                    Next: read
+                    <a class="inline-link" href="assets-shaders.html"
+                        >Assets and shaders</a
+                    >
+                    for the model, texture, and shader path.
+                </footer>
+            </main>
+
+            <aside class="toc">
+                <strong>On this page</strong>
+                <a href="#overview">Overview</a>
+                <a href="#frame-steps">Frame steps</a>
+                <a href="#sync">Synchronisation</a>
+                <a href="#resize">Resize</a>
+                <a href="#source-links">Implementation overview</a>
+            </aside>
         </div>
-      </article>
-
-      <article class="card" id="sync">
-        <div class="meta">Synchronisation</div>
-        <h3>Why the semaphore arrays are indexed differently</h3>
-        <div class="grid">
-          <div class="tile"><strong><code>imageAvailable</code></strong><p>Indexed by frame slot. The frame fence ensures a slot is not reused until its previous GPU submission has finished.</p></div>
-          <div class="tile"><strong><code>renderFinished</code></strong><p>Indexed by swapchain image index. Presentation can hold this semaphore after queue submit, so tying it to the image prevents unsafe reuse.</p></div>
-          <div class="tile"><strong><code>inFlightFences</code></strong><p>Indexed by frame slot. These are CPU-visible wait objects used to stop the CPU from getting too far ahead of GPU work.</p></div>
-          <div class="tile"><strong><code>MAX_FRAMES_IN_FLIGHT</code></strong><p>Set to 2. The CPU can prepare one frame while the GPU executes another without sharing command buffers between active frames.</p></div>
-        </div>
-      </article>
-
-      <article class="card" id="resize">
-        <div class="meta">Resize recovery</div>
-        <h3>What happens when the swapchain is out of date</h3>
-        <p><code>drawFrame</code> returns <code>false</code> on <code>VK_ERROR_OUT_OF_DATE_KHR</code> or <code>VK_SUBOPTIMAL_KHR</code>. <code>Application::run</code> then waits for the device to idle, waits for a non-zero framebuffer size, and rebuilds the dependent objects.</p>
-        <pre class="code">renderer.waitIdle(ctx)
-swap.rebuild(ctx, framebufferWidth, framebufferHeight)
-renderer.recreateSwapchainSync(ctx, swap)
-material.destroy(ctx)
-destroyMeshPipelines(ctx, pipelines)
-initMeshPipelines(ctx, swap.format(), swap.depthFormat(), pipelines)
-material.init(ctx, loadedTexture, pipelines.solid.descriptorSetLayout())
-renderer.recreateImGui(ctx, swap, window)</pre>
-      </article>
-
-      <article class="card" id="source-links">
-        <div class="meta">Doxygen links</div>
-        <h3>Read the exact implementation</h3>
-        <div class="grid">
-          <a class="tile" href="../doxygen/html/class_renderer.html"><strong>Renderer class</strong><p>Public contract for frame resources, ImGui setup, drawing, waiting, and teardown.</p></a>
-          <a class="tile" href="../doxygen/html/frame__data_8cpp_source.html"><strong>frame_data.cpp source</strong><p>Line-by-line source browser for command recording, barriers, submit, and present.</p></a>
-          <a class="tile" href="../doxygen/html/class_swap_chain.html"><strong>SwapChain class</strong><p>Image acquisition, image views, depth resources, and rebuild behaviour.</p></a>
-          <a class="tile" href="../doxygen/html/class_pipeline.html"><strong>Pipeline class</strong><p>Dynamic Rendering pipeline format declaration and fixed-function state.</p></a>
-        </div>
-      </article>
-
-      <footer>Next: read <a class="inline-link" href="assets-shaders.html">Assets and shaders</a> for the model, texture, and shader path.</footer>
-    </main>
-
-    <aside class="toc">
-      <strong>On this page</strong>
-      <a href="#overview">Overview</a>
-      <a href="#frame-steps">Frame steps</a>
-      <a href="#sync">Synchronisation</a>
-      <a href="#resize">Resize</a>
-      <a href="#source-links">Source links</a>
-    </aside>
-  </div>
-</body>
+    </body>
 </html>

@@ -1,41 +1,65 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Architecture guide for Raiju Renderer.">
-  <title>Architecture | Raiju Renderer Wiki</title>
-  <link rel="stylesheet" href="wiki.css">
-</head>
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>System responsibilities.</p></div></div>
-      <nav class="nav">
-        <a href="../../index.html">Product page</a>
-        <a href="index.html">Wiki home</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html" aria-current="page">Architecture</a>
-        <a href="rendering-loop.html">Rendering loop</a>
-        <a href="assets-shaders.html">Assets and shaders</a>
-        <a href="api-map.html">API map</a>
-        <a href="troubleshooting.html">Troubleshooting</a>
-      </nav>
-      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/classes.html">Doxygen classes</a></div>
-    </aside>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Architecture guide for Raiju Renderer."
+        />
+        <title>Architecture | Raiju Renderer Wiki</title>
+        <link rel="stylesheet" href="wiki.css" />
+    </head>
+    <body>
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="profile">
+                    <div class="avatar">R</div>
+                    <div>
+                        <h1>Raiju Wiki</h1>
+                        <p>System responsibilities.</p>
+                    </div>
+                </div>
+                <nav class="nav">
+                    <a href="../../index.html">Product page</a>
+                    <a href="index.html">Wiki home</a>
+                    <a href="getting-started.html">Getting started</a>
+                    <a href="architecture.html" aria-current="page"
+                        >Architecture</a
+                    >
+                    <a href="rendering-loop.html">Rendering loop</a>
+                    <a href="assets-shaders.html">Assets and shaders</a>
+                    <a href="api-map.html">API map</a>
+                    <a href="troubleshooting.html">Troubleshooting</a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a class="button primary" href="api-map.html"
+                        >Open API map</a
+                    >
+                </div>
+            </aside>
 
-    <main class="content">
-      <div class="topbar"><div class="crumb">Wiki / Architecture</div></div>
-      <section class="hero" id="overview">
-        <span class="eyebrow">Codebase map</span>
-        <h2>Architecture</h2>
-        <p class="lead">Raiju Renderer is organised as a small explicit Vulkan application. Each module owns a narrow set of Vulkan handles, exposes accessors for dependent systems, and is destroyed in reverse construction order.</p>
-      </section>
+            <main class="content">
+                <div class="topbar">
+                    <div class="crumb">Wiki / Architecture</div>
+                </div>
 
-      <article class="card" id="lifecycle">
-        <div class="meta">Lifecycle</div>
-        <h3>Startup and shutdown order</h3>
-        <pre class="code">main.cpp
+                <section class="hero" id="overview">
+                    <span class="eyebrow">Codebase map</span>
+                    <h2>Architecture</h2>
+                    <p class="lead">
+                        Raiju Renderer is organised as a small explicit Vulkan
+                        application. Each module owns a narrow set of Vulkan
+                        handles, exposes accessors for dependent systems, and is
+                        destroyed in reverse construction order.
+                    </p>
+                </section>
+
+                <article class="card" id="lifecycle">
+                    <div class="meta">Lifecycle</div>
+                    <h3>Startup and shutdown order</h3>
+                    <pre class="code">
+main.cpp
   Application::run()
     AppWindow::init()
     VulkanContext::init()
@@ -47,63 +71,219 @@
     Renderer::initImGui()
     render loop
     waitIdle()
-    shutdown and destroy in reverse order</pre>
-      </article>
+    shutdown and destroy in reverse order</pre
+                    >
+                </article>
 
-      <article class="card" id="systems">
-        <div class="meta">Core systems</div>
-        <h3>Module responsibility table</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>System</th><th>Files</th><th>Responsibility</th><th>Doxygen</th></tr></thead>
-            <tbody>
-              <tr><td>Application</td><td><code>application.hpp/.cpp</code></td><td>Top-level init, render loop, ImGui controls, asset reloads, camera matrices, resize recovery, teardown.</td><td><a href="../doxygen/html/class_application.html">Application</a></td></tr>
-              <tr><td>AppWindow</td><td><code>window.hpp/.cpp</code></td><td>GLFW init, Vulkan-compatible window creation, framebuffer size queries, event polling, wait while minimised.</td><td><a href="../doxygen/html/class_app_window.html">AppWindow</a></td></tr>
-              <tr><td>VulkanContext</td><td><code>vulkan_context.hpp/.cpp</code></td><td>Vulkan instance, surface, physical device selection, logical device, graphics queue, validation messenger, VMA allocator.</td><td><a href="../doxygen/html/class_vulkan_context.html">VulkanContext</a></td></tr>
-              <tr><td>SwapChain</td><td><code>swapchain.hpp/.cpp</code></td><td>Swapchain creation, image retrieval, colour views, depth images/views, image acquisition, rebuild on resize.</td><td><a href="../doxygen/html/class_swap_chain.html">SwapChain</a></td></tr>
-              <tr><td>Pipeline</td><td><code>graphics_pipeline.hpp/.cpp</code></td><td>SPIR-V loading, shader modules, vertex input layout, descriptor set layout, push constants, Dynamic Rendering graphics pipeline.</td><td><a href="../doxygen/html/class_pipeline.html">Pipeline</a></td></tr>
-              <tr><td>Renderer</td><td><code>frame_data.hpp/.cpp</code></td><td>Command pool, command buffers, fences, semaphores, command recording, submit, present, ImGui backend.</td><td><a href="../doxygen/html/class_renderer.html">Renderer</a></td></tr>
-              <tr><td>GpuBuffer</td><td><code>gpu_buffer.hpp/.cpp</code></td><td>Reusable VMA staging upload helpers for buffers and sampled 2D images.</td><td><a href="../doxygen/html/namespace_gpu_buffer.html">GpuBuffer</a></td></tr>
-              <tr><td>Mesh</td><td><code>mesh.hpp/.cpp</code></td><td>OBJ load, vertex/index layout, device-local vertex and index buffers, bind and draw calls.</td><td><a href="../doxygen/html/class_mesh.html">Mesh</a></td></tr>
-              <tr><td>Material</td><td><code>texture.hpp/.cpp</code></td><td>Texture load, GPU image upload, sampler, descriptor pool, descriptor set, descriptor binding.</td><td><a href="../doxygen/html/class_material.html">Material</a></td></tr>
-            </tbody>
-          </table>
+                <article class="card" id="systems">
+                    <div class="meta">Core systems</div>
+                    <h3>Module responsibility table</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>System</th>
+                                    <th>Files</th>
+                                    <th>Responsibility</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Application</td>
+                                    <td><code>application.hpp/.cpp</code></td>
+                                    <td>
+                                        Top-level init, render loop, ImGui
+                                        controls, asset reloads, camera
+                                        matrices, resize recovery, teardown.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>AppWindow</td>
+                                    <td><code>window.hpp/.cpp</code></td>
+                                    <td>
+                                        GLFW init, Vulkan-compatible window
+                                        creation, framebuffer size queries,
+                                        event polling, wait while minimised.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>VulkanContext</td>
+                                    <td>
+                                        <code>vulkan_context.hpp/.cpp</code>
+                                    </td>
+                                    <td>
+                                        Vulkan instance, surface, physical
+                                        device selection, logical device,
+                                        graphics queue, validation messenger,
+                                        VMA allocator.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>SwapChain</td>
+                                    <td><code>swapchain.hpp/.cpp</code></td>
+                                    <td>
+                                        Swapchain creation, image retrieval,
+                                        colour views, depth images/views, image
+                                        acquisition, rebuild on resize.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Pipeline</td>
+                                    <td>
+                                        <code>graphics_pipeline.hpp/.cpp</code>
+                                    </td>
+                                    <td>
+                                        SPIR-V loading, shader modules, vertex
+                                        input layout, descriptor set layout,
+                                        push constants, Dynamic Rendering
+                                        graphics pipeline.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Renderer</td>
+                                    <td><code>frame_data.hpp/.cpp</code></td>
+                                    <td>
+                                        Command pool, command buffers, fences,
+                                        semaphores, command recording, submit,
+                                        present, ImGui backend.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>GpuBuffer</td>
+                                    <td><code>gpu_buffer.hpp/.cpp</code></td>
+                                    <td>
+                                        Reusable VMA staging upload helpers for
+                                        buffers and sampled 2D images.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Mesh</td>
+                                    <td><code>mesh.hpp/.cpp</code></td>
+                                    <td>
+                                        OBJ load, vertex/index layout,
+                                        device-local vertex and index buffers,
+                                        bind and draw calls.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Material</td>
+                                    <td><code>texture.hpp/.cpp</code></td>
+                                    <td>
+                                        Texture load, GPU image upload, sampler,
+                                        descriptor pool, descriptor set,
+                                        descriptor binding.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card" id="ownership">
+                    <div class="meta">Ownership model</div>
+                    <h3>Who owns what</h3>
+                    <div class="grid">
+                        <div class="tile">
+                            <strong>Root handles</strong>
+                            <p>
+                                <code>VulkanContext</code> owns
+                                <code>VkInstance</code>, <code>VkDevice</code>,
+                                <code>VkSurfaceKHR</code>, the debug messenger,
+                                and the VMA allocator. It does not own
+                                <code>VkPhysicalDevice</code> or
+                                <code>VkQueue</code>.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Presentation resources</strong>
+                            <p>
+                                <code>SwapChain</code> owns
+                                <code>VkSwapchainKHR</code>, colour image views,
+                                depth images, depth allocations, and depth
+                                views. Swapchain images themselves are
+                                driver-owned.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Frame resources</strong>
+                            <p>
+                                <code>Renderer</code> owns the command pool,
+                                command buffers, image-available semaphores,
+                                per-image render-finished semaphores, in-flight
+                                fences, and the ImGui descriptor pool.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Draw resources</strong>
+                            <p>
+                                <code>Pipeline</code>, <code>Mesh</code>, and
+                                <code>Material</code> own the GPU objects needed
+                                to bind state and issue one indexed textured
+                                draw.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card" id="design-decisions">
+                    <div class="meta">Design decisions</div>
+                    <h3>Why the code is shaped this way</h3>
+                    <div class="grid">
+                        <div class="tile">
+                            <strong>Dynamic Rendering</strong>
+                            <p>
+                                The render path avoids legacy
+                                <code>VkRenderPass</code> and
+                                <code>VkFramebuffer</code>. Pipelines declare
+                                attachment formats, and frames bind actual views
+                                with <code>vkCmdBeginRendering</code>.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Four mesh pipelines</strong>
+                            <p>
+                                Wireframe and culling are fixed rasterizer
+                                state, so the application builds solid, solid
+                                culled, wireframe, and wireframe culled pipeline
+                                variants.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Per-image present semaphore</strong>
+                            <p>
+                                <code>renderFinished</code> semaphores are
+                                indexed by swapchain image, not frame slot, to
+                                avoid reusing a semaphore still held by
+                                presentation.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>Staging uploads</strong>
+                            <p>
+                                Meshes and textures are copied through
+                                host-visible staging resources into device-local
+                                VMA allocations for correct GPU memory usage.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <footer>
+                    Next: trace the frame in
+                    <a class="inline-link" href="rendering-loop.html"
+                        >Rendering loop</a
+                    >.
+                </footer>
+            </main>
+
+            <aside class="toc">
+                <strong>On this page</strong>
+                <a href="#overview">Overview</a>
+                <a href="#lifecycle">Lifecycle</a>
+                <a href="#systems">Systems</a>
+                <a href="#ownership">Ownership</a>
+                <a href="#design-decisions">Design decisions</a>
+            </aside>
         </div>
-      </article>
-
-      <article class="card" id="ownership">
-        <div class="meta">Ownership model</div>
-        <h3>Who owns what</h3>
-        <div class="grid">
-          <div class="tile"><strong>Root handles</strong><p><code>VulkanContext</code> owns <code>VkInstance</code>, <code>VkDevice</code>, <code>VkSurfaceKHR</code>, debug messenger, and VMA allocator. It does not own <code>VkPhysicalDevice</code> or <code>VkQueue</code>.</p></div>
-          <div class="tile"><strong>Presentation resources</strong><p><code>SwapChain</code> owns <code>VkSwapchainKHR</code>, colour image views, depth images, depth allocations, and depth views. Swapchain images are driver-owned.</p></div>
-          <div class="tile"><strong>Frame resources</strong><p><code>Renderer</code> owns the command pool, command buffers, image-available semaphores, per-image render-finished semaphores, in-flight fences, and ImGui descriptor pool.</p></div>
-          <div class="tile"><strong>Draw resources</strong><p><code>Pipeline</code>, <code>Mesh</code>, and <code>Material</code> own the GPU objects needed to bind state and issue one indexed textured draw.</p></div>
-        </div>
-      </article>
-
-      <article class="card" id="design-decisions">
-        <div class="meta">Design decisions</div>
-        <h3>Why the code is shaped this way</h3>
-        <div class="grid">
-          <div class="tile"><strong>Dynamic Rendering</strong><p>The render path avoids legacy <code>VkRenderPass</code> and <code>VkFramebuffer</code>. Pipelines declare attachment formats, and frames bind actual views with <code>vkCmdBeginRendering</code>.</p></div>
-          <div class="tile"><strong>Four mesh pipelines</strong><p>Wireframe and culling are fixed rasterizer state, so the application builds solid, solid culled, wireframe, and wireframe culled pipeline variants.</p></div>
-          <div class="tile"><strong>Per-image present semaphore</strong><p><code>renderFinished</code> semaphores are indexed by swapchain image, not frame slot, to avoid reusing a semaphore still held by presentation.</p></div>
-          <div class="tile"><strong>Staging uploads</strong><p>Meshes and textures are copied through host-visible staging resources into device-local VMA allocations for correct GPU memory usage.</p></div>
-        </div>
-      </article>
-
-      <footer>Next: trace the frame in <a class="inline-link" href="rendering-loop.html">Rendering loop</a>.</footer>
-    </main>
-
-    <aside class="toc">
-      <strong>On this page</strong>
-      <a href="#overview">Overview</a>
-      <a href="#lifecycle">Lifecycle</a>
-      <a href="#systems">Systems</a>
-      <a href="#ownership">Ownership</a>
-      <a href="#design-decisions">Design decisions</a>
-    </aside>
-  </div>
-</body>
+    </body>
 </html>

@@ -1,108 +1,436 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Doxygen API map for Raiju Renderer.">
-  <title>API Map | Raiju Renderer Wiki</title>
-  <link rel="stylesheet" href="wiki.css">
-</head>
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>Doxygen guide.</p></div></div>
-      <nav class="nav">
-        <a href="../../index.html">Product page</a>
-        <a href="index.html">Wiki home</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="rendering-loop.html">Rendering loop</a>
-        <a href="assets-shaders.html">Assets and shaders</a>
-        <a href="api-map.html" aria-current="page">API map</a>
-        <a href="troubleshooting.html">Troubleshooting</a>
-      </nav>
-      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/index.html">Doxygen API</a></div>
-    </aside>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="API map for Raiju Renderer." />
+        <title>API Map | Raiju Renderer Wiki</title>
+        <link rel="stylesheet" href="wiki.css" />
+    </head>
+    <body>
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="profile">
+                    <div class="avatar">R</div>
+                    <div>
+                        <h1>Raiju Wiki</h1>
+                        <p>API overview.</p>
+                    </div>
+                </div>
+                <nav class="nav">
+                    <a href="../../index.html">Product page</a>
+                    <a href="index.html">Wiki home</a>
+                    <a href="getting-started.html">Getting started</a>
+                    <a href="architecture.html">Architecture</a>
+                    <a href="rendering-loop.html">Rendering loop</a>
+                    <a href="assets-shaders.html">Assets and shaders</a>
+                    <a href="api-map.html" aria-current="page">API map</a>
+                    <a href="troubleshooting.html">Troubleshooting</a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a
+                        class="button primary"
+                        href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/tree/main/src"
+                        target="_blank"
+                        rel="noreferrer"
+                        >View src/ on GitHub</a
+                    >
+                </div>
+            </aside>
 
-    <main class="content">
-      <div class="topbar"><div class="crumb">Wiki / API map</div></div>
-      <section class="hero" id="overview">
-        <span class="eyebrow">Reference map</span>
-        <h2>API Map</h2>
-        <p class="lead">Doxygen is best when you know what you are looking for. This page gives end users a curated index into the generated class pages, file pages, source browser, namespaces, structs, and global symbols.</p>
-      </section>
+            <main class="content">
+                <div class="topbar">
+                    <div class="crumb">Wiki / API map</div>
+                </div>
 
-      <article class="card" id="classes">
-        <div class="meta">Classes</div>
-        <h3>Main runtime classes</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Class</th><th>Use when you need</th><th>Links</th></tr></thead>
-            <tbody>
-              <tr><td>Application</td><td>Startup order, UI state, render loop coordination, asset browser, resize recovery.</td><td><a href="../doxygen/html/class_application.html">Class</a> / <a href="../doxygen/html/application_8cpp_source.html">Source</a></td></tr>
-              <tr><td>AppWindow</td><td>GLFW window lifecycle and framebuffer size queries.</td><td><a href="../doxygen/html/class_app_window.html">Class</a> / <a href="../doxygen/html/window_8cpp_source.html">Source</a></td></tr>
-              <tr><td>VulkanContext</td><td>Vulkan instance/device/queue/surface setup and VMA allocator ownership.</td><td><a href="../doxygen/html/class_vulkan_context.html">Class</a> / <a href="../doxygen/html/vulkan__context_8cpp_source.html">Source</a></td></tr>
-              <tr><td>SwapChain</td><td>Swapchain image acquisition, image views, depth attachments, rebuild behaviour.</td><td><a href="../doxygen/html/class_swap_chain.html">Class</a> / <a href="../doxygen/html/swapchain_8cpp_source.html">Source</a></td></tr>
-              <tr><td>Pipeline</td><td>Shader modules, pipeline layout, descriptor set layout, Dynamic Rendering pipeline creation.</td><td><a href="../doxygen/html/class_pipeline.html">Class</a> / <a href="../doxygen/html/graphics__pipeline_8cpp_source.html">Source</a></td></tr>
-              <tr><td>Renderer</td><td>Per-frame command buffers, sync objects, frame recording, submit, present, ImGui backend.</td><td><a href="../doxygen/html/class_renderer.html">Class</a> / <a href="../doxygen/html/frame__data_8cpp_source.html">Source</a></td></tr>
-              <tr><td>Mesh</td><td>Device-local vertex/index buffer ownership and draw commands.</td><td><a href="../doxygen/html/class_mesh.html">Class</a> / <a href="../doxygen/html/mesh_8cpp_source.html">Source</a></td></tr>
-              <tr><td>Material</td><td>Texture image, sampler, descriptor pool, descriptor set, descriptor binding.</td><td><a href="../doxygen/html/class_material.html">Class</a> / <a href="../doxygen/html/texture_8cpp_source.html">Source</a></td></tr>
-            </tbody>
-          </table>
+                <section class="hero" id="overview">
+                    <span class="eyebrow">Reference map</span>
+                    <h2>API Map</h2>
+                    <p class="lead">
+                        This page gives you a curated index into the main engine
+                        classes, data structures, and source files. Use it when
+                        you know roughly what subsystem you want and need to
+                        jump straight into the relevant code.
+                    </p>
+                </section>
+
+                <article class="card" id="classes">
+                    <div class="meta">Classes</div>
+                    <h3>Main runtime classes</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Use when you need</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Application</td>
+                                    <td>
+                                        Startup order, UI state, render loop
+                                        coordination, asset browser, resize
+                                        recovery.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/application.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >application.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/application.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >application.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>AppWindow</td>
+                                    <td>
+                                        GLFW window lifecycle and framebuffer
+                                        size queries.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/window.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >window.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/window.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >window.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>VulkanContext</td>
+                                    <td>
+                                        Vulkan instance/device/queue/surface
+                                        setup and VMA allocator ownership.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/vulkan_context.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >vulkan_context.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/vulkan_context.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >vulkan_context.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>SwapChain</td>
+                                    <td>
+                                        Swapchain image acquisition, image
+                                        views, depth attachments, rebuild
+                                        behaviour.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/swapchain.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >swapchain.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/swapchain.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >swapchain.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Pipeline</td>
+                                    <td>
+                                        Shader modules, pipeline layout,
+                                        descriptor set layout, Dynamic Rendering
+                                        pipeline creation.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/graphics_pipeline.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >graphics_pipeline.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/graphics_pipeline.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >graphics_pipeline.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Renderer</td>
+                                    <td>
+                                        Per-frame command buffers, sync objects,
+                                        frame recording, submit, present, ImGui
+                                        backend.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/frame_data.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >frame_data.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/frame_data.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >frame_data.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Mesh</td>
+                                    <td>
+                                        Device-local vertex/index buffer
+                                        ownership and draw commands.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/mesh.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >mesh.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/mesh.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >mesh.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Material</td>
+                                    <td>
+                                        Texture image, sampler, descriptor pool,
+                                        descriptor set, descriptor binding.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/texture.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >texture.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/texture.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >texture.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>GpuBuffer</td>
+                                    <td>
+                                        Staging upload helpers for buffers and
+                                        images, plus resource wrappers.
+                                    </td>
+                                    <td>
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/gpu_buffer.hpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >gpu_buffer.hpp</a
+                                        >
+                                        /
+                                        <a
+                                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/gpu_buffer.cpp"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            >gpu_buffer.cpp</a
+                                        >
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card" id="structs">
+                    <div class="meta">Structs and enums</div>
+                    <h3>Data passed between systems</h3>
+                    <div class="grid">
+                        <div class="tile">
+                            <strong>Vertex</strong>
+                            <p>
+                                Interleaved position, normal, and UV data
+                                expected by the mesh pipeline. Defined in the
+                                mesh module alongside vertex input descriptions.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>LoadedMesh</strong>
+                            <p>
+                                CPU-side vertices and indices returned by OBJ
+                                loading before they are uploaded to the GPU.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>LoadedTexture</strong>
+                            <p>
+                                CPU-side RGBA8 texture pixels and metadata
+                                produced by the texture loading path.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>DrawPushConstants</strong>
+                            <p>
+                                MVP matrix and debug mode pushed to vertex and
+                                fragment stages each draw.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>BufferResource</strong>
+                            <p>
+                                Vulkan buffer plus VMA allocation wrapper, used
+                                by <code>GpuBuffer</code> helpers.
+                            </p>
+                        </div>
+                        <div class="tile">
+                            <strong>ImageResource</strong>
+                            <p>
+                                Vulkan image plus allocation, view, format, and
+                                extent wrapper used for textures and depth.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card" id="files">
+                    <div class="meta">Files</div>
+                    <h3>Source entry points</h3>
+                    <div class="grid three">
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/application.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>application.cpp</strong>
+                            <p>Main lifecycle and debug UI.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/vulkan_context.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>vulkan_context.cpp</strong>
+                            <p>Vulkan bootstrap through vk-bootstrap.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/swapchain.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>swapchain.cpp</strong>
+                            <p>Swapchain and depth resources.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/frame_data.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>frame_data.cpp</strong>
+                            <p>Per-frame command recording and submission.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/graphics_pipeline.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>graphics_pipeline.cpp</strong>
+                            <p>Pipeline creation and SPIR-V loading.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/gpu_buffer.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>gpu_buffer.cpp</strong>
+                            <p>Staging upload helpers and resource wrappers.</p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/mesh.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>mesh.cpp</strong>
+                            <p>
+                                OBJ loading, import transform, and mesh upload.
+                            </p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/texture.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>texture.cpp</strong>
+                            <p>
+                                Texture loading, image upload, sampler, and
+                                descriptors.
+                            </p>
+                        </a>
+                        <a
+                            class="tile"
+                            href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/blob/main/src/main.cpp"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <strong>main.cpp</strong>
+                            <p>Thin executable entry point.</p>
+                        </a>
+                    </div>
+                </article>
+
+                <footer>
+                    This API map is a shortcut into the engine’s types and
+                    files. Use it together with your IDE’s symbol search and the
+                    other wiki pages when exploring the codebase.
+                </footer>
+            </main>
+
+            <aside class="toc">
+                <strong>On this page</strong>
+                <a href="#overview">Overview</a>
+                <a href="#classes">Classes</a>
+                <a href="#structs">Structs</a>
+                <a href="#files">Files</a>
+            </aside>
         </div>
-      </article>
-
-      <article class="card" id="structs">
-        <div class="meta">Structs and enums</div>
-        <h3>Data passed between systems</h3>
-        <div class="grid">
-          <a class="tile" href="../doxygen/html/struct_vertex.html"><strong>Vertex</strong><p>Interleaved position, normal, and UV data expected by the mesh pipeline.</p></a>
-          <a class="tile" href="../doxygen/html/struct_loaded_mesh.html"><strong>LoadedMesh</strong><p>CPU-side vertices and indices returned by OBJ loading.</p></a>
-          <a class="tile" href="../doxygen/html/struct_loaded_texture.html"><strong>LoadedTexture</strong><p>CPU-side RGBA8 texture pixels and metadata.</p></a>
-          <a class="tile" href="../doxygen/html/struct_draw_push_constants.html"><strong>DrawPushConstants</strong><p>MVP matrix and debug mode pushed to vertex and fragment stages.</p></a>
-          <a class="tile" href="../doxygen/html/struct_gpu_buffer_1_1_buffer_resource.html"><strong>BufferResource</strong><p>Vulkan buffer plus VMA allocation wrapper.</p></a>
-          <a class="tile" href="../doxygen/html/struct_gpu_buffer_1_1_image_resource.html"><strong>ImageResource</strong><p>Vulkan image plus allocation, view, format, and extent wrapper.</p></a>
-        </div>
-      </article>
-
-      <article class="card" id="files">
-        <div class="meta">Files</div>
-        <h3>Source-browser entry points</h3>
-        <div class="grid three">
-          <a class="tile" href="../doxygen/html/application_8cpp_source.html"><strong>application.cpp</strong><p>Main lifecycle and debug UI.</p></a>
-          <a class="tile" href="../doxygen/html/vulkan__context_8cpp_source.html"><strong>vulkan_context.cpp</strong><p>Vulkan bootstrap through vk-bootstrap.</p></a>
-          <a class="tile" href="../doxygen/html/swapchain_8cpp_source.html"><strong>swapchain.cpp</strong><p>Swapchain and depth resources.</p></a>
-          <a class="tile" href="../doxygen/html/frame__data_8cpp_source.html"><strong>frame_data.cpp</strong><p>Per-frame command recording.</p></a>
-          <a class="tile" href="../doxygen/html/graphics__pipeline_8cpp_source.html"><strong>graphics_pipeline.cpp</strong><p>Pipeline creation and SPIR-V loading.</p></a>
-          <a class="tile" href="../doxygen/html/gpu__buffer_8cpp_source.html"><strong>gpu_buffer.cpp</strong><p>Staging upload helpers.</p></a>
-          <a class="tile" href="../doxygen/html/mesh_8cpp_source.html"><strong>mesh.cpp</strong><p>OBJ loading and mesh upload.</p></a>
-          <a class="tile" href="../doxygen/html/texture_8cpp_source.html"><strong>texture.cpp</strong><p>Texture loading and material descriptors.</p></a>
-          <a class="tile" href="../doxygen/html/main_8cpp_source.html"><strong>main.cpp</strong><p>Thin executable entry point.</p></a>
-        </div>
-      </article>
-
-      <article class="card" id="indexes">
-        <div class="meta">Generated indexes</div>
-        <h3>Doxygen global views</h3>
-        <div class="grid">
-          <a class="tile" href="../doxygen/html/classes.html"><strong>Class index</strong><p>All classes and structs in one generated list.</p></a>
-          <a class="tile" href="../doxygen/html/files.html"><strong>File index</strong><p>All documented headers and source files.</p></a>
-          <a class="tile" href="../doxygen/html/functions.html"><strong>Members</strong><p>Generated list of functions and variables.</p></a>
-          <a class="tile" href="../doxygen/html/globals.html"><strong>Globals</strong><p>Free functions, global constants, enums, and definitions.</p></a>
-        </div>
-      </article>
-
-      <footer>Doxygen output is generated from <code>Doxyfile</code> into <code>docs/doxygen/html</code>.</footer>
-    </main>
-
-    <aside class="toc">
-      <strong>On this page</strong>
-      <a href="#overview">Overview</a>
-      <a href="#classes">Classes</a>
-      <a href="#structs">Structs</a>
-      <a href="#files">Files</a>
-      <a href="#indexes">Indexes</a>
-    </aside>
-  </div>
-</body>
+    </body>
 </html>
