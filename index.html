@@ -1,588 +1,840 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Raiju Renderer is an open-source Vulkan 1.3 renderer built in C++20 to make real-time graphics easier to inspect, learn, and extend.">
-  <meta name="theme-color" content="#410090">
-  <title>Raiju Renderer | Vulkan 1.3 Renderer</title>
-
-  <style>
-    :root {
-      --bg: #f6f7fb;
-      --surface: #ffffff;
-      --surface-2: #f1f3f9;
-      --text: #1f2430;
-      --muted: #6b7280;
-      --line: #dfe3ec;
-      --brand: #410090;
-      --brand-soft: rgba(65, 0, 144, 0.09);
-      --brand-mid: rgba(65, 0, 144, 0.18);
-      --code: #242936;
-      --shadow: 0 18px 45px rgba(31, 36, 48, 0.08);
-      --sidebar: 292px;
-      --toc: 250px;
-      --radius: 18px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background: var(--bg);
-      line-height: 1.65;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    img {
-      max-width: 100%;
-      display: block;
-    }
-
-    .layout {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--toc);
-    }
-
-    .sidebar {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      padding: 28px 24px;
-      background: #ffffff;
-      border-right: 1px solid var(--line);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .profile {
-      display: grid;
-      gap: 14px;
-    }
-
-    .avatar {
-      width: 74px;
-      height: 74px;
-      border-radius: 24px;
-      display: grid;
-      place-items: center;
-      color: white;
-      font-size: 2rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--brand), #6f32c9);
-      box-shadow: 0 16px 34px rgba(65, 0, 144, 0.22);
-    }
-
-    .profile h1 {
-      margin: 0;
-      font-size: 1.45rem;
-      line-height: 1.1;
-      letter-spacing: -0.04em;
-    }
-
-    .profile p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .nav {
-      display: grid;
-      gap: 6px;
-    }
-
-    .nav a {
-      padding: 10px 12px;
-      border-radius: 12px;
-      color: #4b5563;
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
-
-    .nav a:hover {
-      background: var(--brand-soft);
-      color: var(--brand);
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      display: grid;
-      gap: 10px;
-    }
-
-    .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-weight: 800;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--brand);
-    }
-
-    .button.primary {
-      background: var(--brand);
-      color: #fff;
-      border-color: var(--brand);
-      box-shadow: 0 14px 32px rgba(65, 0, 144, 0.20);
-    }
-
-    .content {
-      min-width: 0;
-      padding: 28px clamp(24px, 4vw, 56px) 60px;
-    }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      min-height: 64px;
-      margin: -28px calc(clamp(24px, 4vw, 56px) * -1) 42px;
-      padding: 0 clamp(24px, 4vw, 56px);
-      background: rgba(246, 247, 251, 0.86);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--line);
-    }
-
-    .crumb {
-      color: var(--muted);
-      font-size: 0.92rem;
-      font-weight: 700;
-    }
-
-    .search {
-      width: min(100%, 320px);
-      padding: 10px 14px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: #fff;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    .hero {
-      padding: 12px 0 34px;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      gap: 9px;
-      align-items: center;
-      padding: 7px 11px;
-      border-radius: 999px;
-      background: var(--brand-soft);
-      color: var(--brand);
-      border: 1px solid var(--brand-mid);
-      font-weight: 800;
-      font-size: 0.88rem;
-    }
-
-    .pulse {
-      width: 8px;
-      height: 8px;
-      border-radius: 99px;
-      background: var(--brand);
-    }
-
-    h2 {
-      margin: 0;
-      font-size: clamp(2.45rem, 6vw, 5.6rem);
-      line-height: 1.02;
-      letter-spacing: -0.07em;
-    }
-
-    h3 {
-      margin: 0 0 10px;
-      font-size: clamp(1.75rem, 3vw, 2.6rem);
-      letter-spacing: -0.055em;
-      line-height: 1.1;
-    }
-
-    h4 {
-      margin: 0 0 8px;
-      font-size: 1.18rem;
-      letter-spacing: -0.035em;
-    }
-
-    .gradient {
-      background: linear-gradient(135deg, var(--brand), #1f2430 58%, #6f32c9);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-    }
-
-    .lead {
-      max-width: 760px;
-      margin: 22px 0 28px;
-      color: var(--muted);
-      font-size: 1.15rem;
-    }
-
-    .badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 24px 0 0;
-    }
-
-    .badge {
-      padding: 7px 10px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: #fff;
-      color: #4b5563;
-      font-weight: 800;
-      font-size: 0.86rem;
-    }
-
-    .post-card {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: clamp(22px, 4vw, 34px);
-      box-shadow: var(--shadow);
-      margin-bottom: 22px;
-    }
-
-    .post-meta {
-      color: var(--brand);
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      font-size: 0.76rem;
-      margin-bottom: 12px;
-    }
-
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-top: 22px;
-    }
-
-    .feature {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--surface-2);
-    }
-
-    .feature strong {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--text);
-    }
-
-    .feature p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.94rem;
-    }
-
-    .screens {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-top: 20px;
-    }
-
-    .screen {
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--surface-2);
-    }
-
-    .screen img {
-      width: 100%;
-      aspect-ratio: 16 / 10;
-      object-fit: cover;
-      border-bottom: 1px solid var(--line);
-      background: #fff;
-    }
-
-    .screen div {
-      padding: 16px;
-    }
-
-    .screen p {
-      color: var(--muted);
-      margin: 0;
-      font-size: 0.94rem;
-    }
-
-    .timeline {
-      display: grid;
-      gap: 12px;
-      margin-top: 20px;
-    }
-
-    .timeline-item {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 16px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--surface-2);
-    }
-
-    .label {
-      width: max-content;
-      height: max-content;
-      padding: 6px 9px;
-      border-radius: 999px;
-      color: var(--brand);
-      background: var(--brand-soft);
-      border: 1px solid var(--brand-mid);
-      font-size: 0.82rem;
-      font-weight: 900;
-    }
-
-    .code {
-      background: var(--code);
-      color: #eef2ff;
-      border-radius: 16px;
-      padding: 18px;
-      overflow-x: auto;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      font-size: 0.92rem;
-      line-height: 1.55;
-    }
-
-    .toc {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      padding: 96px 22px 28px;
-      border-left: 1px solid var(--line);
-      color: var(--muted);
-    }
-
-    .toc strong {
-      display: block;
-      color: var(--text);
-      margin-bottom: 14px;
-      font-size: 0.95rem;
-    }
-
-    .toc a {
-      display: block;
-      padding: 6px 0;
-      font-size: 0.9rem;
-    }
-
-    .toc a:hover {
-      color: var(--brand);
-    }
-
-    footer {
-      color: var(--muted);
-      font-size: 0.92rem;
-      padding-top: 18px;
-    }
-
-    @media (max-width: 1120px) {
-      .layout { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
-      .toc { display: none; }
-    }
-
-    @media (max-width: 820px) {
-      .layout { display: block; }
-      .sidebar {
-        position: relative;
-        height: auto;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
-      }
-      .nav {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .content {
-        padding: 24px 18px 50px;
-      }
-      .topbar {
-        margin: -24px -18px 32px;
-        padding: 0 18px;
-      }
-      .search { display: none; }
-      .feature-grid, .screens { grid-template-columns: 1fr; }
-      .timeline-item { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="profile">
-        <div class="avatar">R</div>
-        <div>
-          <h1>Raiju Renderer</h1>
-          <p>Open-source Vulkan 1.3 renderer built in C++20.</p>
-        </div>
-      </div>
-
-      <nav class="nav">
-        <a href="#overview">Overview</a>
-        <a href="#screenshots">Screenshots</a>
-        <a href="#features">Features</a>
-        <a href="#build">Build</a>
-        <a href="#architecture">Architecture</a>
-        <a href="#documentation">Documentation</a>
-        <a href="#roadmap">Roadmap</a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <a class="button primary" href="docs/wiki/index.html">Read the Wiki</a>
-        <a class="button" href="docs/doxygen/html/index.html">API Reference</a>
-        <a class="button" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer" target="_blank" rel="noreferrer">View on GitHub</a>
-        <a class="button" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/issues" target="_blank" rel="noreferrer">Suggest an idea</a>
-      </div>
-    </aside>
-
-    <main class="content">
-      <div class="topbar">
-        <div class="crumb">Home / Raiju Renderer / Vulkan 1.3</div>
-        <div class="search">Search documentation...</div>
-      </div>
-
-      <section class="hero" id="overview">
-        <span class="eyebrow"><span class="pulse"></span>Prototype / Final Year Project</span>
-        <h2><span class="gradient">Real-time graphics made visible.</span></h2>
-        <p class="lead">Raiju Renderer is a focused Vulkan renderer designed to show the normally hidden work behind real-time graphics. It turns model data, texture data, synchronisation rules, command buffers, and GPU resources into something that can be inspected, explained, and extended.</p>
-        <div class="badges">
-          <span class="badge">Vulkan 1.3</span>
-          <span class="badge">C++20</span>
-          <span class="badge">Dynamic Rendering</span>
-          <span class="badge">Linux + Windows</span>
-          <span class="badge">Open Source</span>
-        </div>
-      </section>
-
-      <article class="post-card" id="screenshots">
-        <div class="post-meta">Prototype evidence</div>
-        <h3>Current renderer output</h3>
-        <p class="lead">The renderer is being built in milestones. These screenshots show the jump from the first Vulkan baseline to the current textured OBJ vertical slice.</p>
-
-        <div class="screens">
-          <div class="screen">
-            <img src="docs/prototype-evidence/M1-triangle.png" alt="Milestone 1 Vulkan triangle">
-            <div>
-              <h4>Milestone 1: Vulkan baseline</h4>
-              <p>Window creation, swapchain setup, graphics pipeline, command recording, and presentation.</p>
-            </div>
-          </div>
-
-          <div class="screen">
-            <img src="docs/prototype-evidence/M2-textured-obj.png" alt="Milestone 2 textured OBJ scene">
-            <div>
-              <h4>Milestone 2: Textured model</h4>
-              <p>OBJ loading, texture upload, descriptor binding, depth testing, debug UI, and visible model output.</p>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article class="post-card" id="features">
-        <div class="post-meta">Supported features</div>
-        <h3>Small enough to understand. Real enough to matter.</h3>
-
-        <div class="feature-grid">
-          <div class="feature"><strong>Dynamic Rendering</strong><p>No legacy render pass or framebuffer path for the main colour/depth pass.</p></div>
-          <div class="feature"><strong>Textured OBJ path</strong><p>Loads an OBJ mesh, uploads vertex/index buffers, loads a texture, and draws indexed geometry.</p></div>
-          <div class="feature"><strong>Debug UI</strong><p>Shows frame timing and supports wireframe, culling, and normals visualisation.</p></div>
-          <div class="feature"><strong>Explicit sync</strong><p>Uses fences, semaphores, and image barriers to keep the frame lifecycle explainable.</p></div>
-          <div class="feature"><strong>Resize recovery</strong><p>Rebuilds swapchain-dependent resources when the window changes size.</p></div>
-          <div class="feature"><strong>Research direction</strong><p>Acts as a foundation for future PBR, scene loading, and Gaussian splatting work.</p></div>
-        </div>
-      </article>
-
-      <article class="post-card" id="build">
-        <div class="post-meta">Getting started</div>
-        <h3>Build and run</h3>
-        <p>Requirements: Vulkan 1.3 capable GPU, C++20 compiler, CMake 3.25+, Vulkan SDK, and vcpkg.</p>
-
-        <pre class="code">git clone https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer.git
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Raiju Renderer is an open-source Vulkan 1.3 renderer built in C++20 to make real-time graphics easier to inspect, learn, and extend."
+        />
+        <meta name="theme-color" content="#410090" />
+        <title>Raiju Renderer | Vulkan 1.3 Renderer</title>
+
+        <style>
+            :root {
+                --bg: #f6f7fb;
+                --surface: #ffffff;
+                --surface-2: #f1f3f9;
+                --text: #1f2430;
+                --muted: #6b7280;
+                --line: #dfe3ec;
+                --brand: #410090;
+                --brand-soft: rgba(65, 0, 144, 0.09);
+                --brand-mid: rgba(65, 0, 144, 0.18);
+                --code: #242936;
+                --shadow: 0 18px 45px rgba(31, 36, 48, 0.08);
+                --sidebar: 292px;
+                --toc: 250px;
+                --radius: 18px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                margin: 0;
+                font-family:
+                    Inter,
+                    ui-sans-serif,
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--text);
+                background: var(--bg);
+                line-height: 1.65;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+
+            img {
+                max-width: 100%;
+                display: block;
+            }
+
+            .layout {
+                min-height: 100vh;
+                display: grid;
+                grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--toc);
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                padding: 28px 24px;
+                background: #ffffff;
+                border-right: 1px solid var(--line);
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .profile {
+                display: grid;
+                gap: 14px;
+            }
+
+            .avatar {
+                width: 74px;
+                height: 74px;
+                border-radius: 24px;
+                display: grid;
+                place-items: center;
+                color: white;
+                font-size: 2rem;
+                font-weight: 900;
+                background: linear-gradient(135deg, var(--brand), #6f32c9);
+                box-shadow: 0 16px 34px rgba(65, 0, 144, 0.22);
+            }
+
+            .profile h1 {
+                margin: 0;
+                font-size: 1.45rem;
+                line-height: 1.1;
+                letter-spacing: -0.04em;
+            }
+
+            .profile p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 0.95rem;
+            }
+
+            .nav {
+                display: grid;
+                gap: 6px;
+            }
+
+            .nav a {
+                padding: 10px 12px;
+                border-radius: 12px;
+                color: #4b5563;
+                font-weight: 700;
+                font-size: 0.95rem;
+            }
+
+            .nav a:hover {
+                background: var(--brand-soft);
+                color: var(--brand);
+            }
+
+            .sidebar-footer {
+                margin-top: auto;
+                display: grid;
+                gap: 10px;
+            }
+
+            .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 14px;
+                border-radius: 12px;
+                font-weight: 800;
+                border: 1px solid var(--line);
+                background: var(--surface);
+                color: var(--brand);
+            }
+
+            .button.primary {
+                background: var(--brand);
+                color: #fff;
+                border-color: var(--brand);
+                box-shadow: 0 14px 32px rgba(65, 0, 144, 0.2);
+            }
+
+            .content {
+                min-width: 0;
+                padding: 28px clamp(24px, 4vw, 56px) 60px;
+            }
+
+            .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 18px;
+                min-height: 64px;
+                margin: -28px calc(clamp(24px, 4vw, 56px) * -1) 42px;
+                padding: 0 clamp(24px, 4vw, 56px);
+                background: rgba(246, 247, 251, 0.86);
+                backdrop-filter: blur(18px);
+                border-bottom: 1px solid var(--line);
+            }
+
+            .crumb {
+                color: var(--muted);
+                font-size: 0.92rem;
+                font-weight: 700;
+            }
+
+            .search {
+                width: min(100%, 320px);
+                padding: 10px 14px;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: #fff;
+                color: var(--muted);
+                font-size: 0.92rem;
+            }
+
+            .hero {
+                padding: 12px 0 34px;
+            }
+
+            .eyebrow {
+                display: inline-flex;
+                gap: 9px;
+                align-items: center;
+                padding: 7px 11px;
+                border-radius: 999px;
+                background: var(--brand-soft);
+                color: var(--brand);
+                border: 1px solid var(--brand-mid);
+                font-weight: 800;
+                font-size: 0.88rem;
+            }
+
+            .pulse {
+                width: 8px;
+                height: 8px;
+                border-radius: 99px;
+                background: var(--brand);
+            }
+
+            h2 {
+                margin: 0;
+                font-size: clamp(2.45rem, 6vw, 5.6rem);
+                line-height: 1.02;
+                letter-spacing: -0.07em;
+            }
+
+            h3 {
+                margin: 0 0 10px;
+                font-size: clamp(1.75rem, 3vw, 2.6rem);
+                letter-spacing: -0.055em;
+                line-height: 1.1;
+            }
+
+            h4 {
+                margin: 0 0 8px;
+                font-size: 1.18rem;
+                letter-spacing: -0.035em;
+            }
+
+            .gradient {
+                background: linear-gradient(
+                    135deg,
+                    var(--brand),
+                    #1f2430 58%,
+                    #6f32c9
+                );
+                background-clip: text;
+                -webkit-background-clip: text;
+                color: transparent;
+            }
+
+            .lead {
+                max-width: 760px;
+                margin: 22px 0 28px;
+                color: var(--muted);
+                font-size: 1.15rem;
+            }
+
+            .badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin: 24px 0 0;
+            }
+
+            .badge {
+                padding: 7px 10px;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: #fff;
+                color: #4b5563;
+                font-weight: 800;
+                font-size: 0.86rem;
+            }
+
+            .post-card {
+                background: var(--surface);
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                padding: clamp(22px, 4vw, 34px);
+                box-shadow: var(--shadow);
+                margin-bottom: 22px;
+            }
+
+            .post-meta {
+                color: var(--brand);
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.11em;
+                font-size: 0.76rem;
+                margin-bottom: 12px;
+            }
+
+            .feature-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin-top: 22px;
+            }
+
+            .feature {
+                padding: 18px;
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                background: var(--surface-2);
+            }
+
+            .feature strong {
+                display: block;
+                margin-bottom: 6px;
+                color: var(--text);
+            }
+
+            .feature p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 0.94rem;
+            }
+
+            .screens {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 18px;
+                margin-top: 20px;
+            }
+
+            .screen {
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                background: var(--surface-2);
+            }
+
+            .screen img {
+                width: 100%;
+                aspect-ratio: 16 / 10;
+                object-fit: cover;
+                border-bottom: 1px solid var(--line);
+                background: #fff;
+            }
+
+            .screen div {
+                padding: 16px;
+            }
+
+            .screen p {
+                color: var(--muted);
+                margin: 0;
+                font-size: 0.94rem;
+            }
+
+            .timeline {
+                display: grid;
+                gap: 12px;
+                margin-top: 20px;
+            }
+
+            .timeline-item {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                gap: 16px;
+                padding: 16px;
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                background: var(--surface-2);
+            }
+
+            .label {
+                width: max-content;
+                height: max-content;
+                padding: 6px 9px;
+                border-radius: 999px;
+                color: var(--brand);
+                background: var(--brand-soft);
+                border: 1px solid var(--brand-mid);
+                font-size: 0.82rem;
+                font-weight: 900;
+            }
+
+            .code {
+                background: var(--code);
+                color: #eef2ff;
+                border-radius: 16px;
+                padding: 18px;
+                overflow-x: auto;
+                font-family:
+                    "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+                font-size: 0.92rem;
+                line-height: 1.55;
+            }
+
+            .toc {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                padding: 96px 22px 28px;
+                border-left: 1px solid var(--line);
+                color: var(--muted);
+            }
+
+            .toc strong {
+                display: block;
+                color: var(--text);
+                margin-bottom: 14px;
+                font-size: 0.95rem;
+            }
+
+            .toc a {
+                display: block;
+                padding: 6px 0;
+                font-size: 0.9rem;
+            }
+
+            .toc a:hover {
+                color: var(--brand);
+            }
+
+            footer {
+                color: var(--muted);
+                font-size: 0.92rem;
+                padding-top: 18px;
+            }
+
+            @media (max-width: 1120px) {
+                .layout {
+                    grid-template-columns: var(--sidebar) minmax(0, 1fr);
+                }
+                .toc {
+                    display: none;
+                }
+            }
+
+            @media (max-width: 820px) {
+                .layout {
+                    display: block;
+                }
+                .sidebar {
+                    position: relative;
+                    height: auto;
+                    border-right: 0;
+                    border-bottom: 1px solid var(--line);
+                }
+                .nav {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                .content {
+                    padding: 24px 18px 50px;
+                }
+                .topbar {
+                    margin: -24px -18px 32px;
+                    padding: 0 18px;
+                }
+                .search {
+                    display: none;
+                }
+                .feature-grid,
+                .screens {
+                    grid-template-columns: 1fr;
+                }
+                .timeline-item {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="profile">
+                    <div class="avatar">R</div>
+                    <div>
+                        <h1>Raiju Renderer</h1>
+                        <p>Open-source Vulkan 1.3 renderer built in C++20.</p>
+                    </div>
+                </div>
+
+                <nav class="nav">
+                    <a href="#overview">Overview</a>
+                    <a href="#screenshots">Screenshots</a>
+                    <a href="#features">Features</a>
+                    <a href="#build">Build</a>
+                    <a href="#architecture">Architecture</a>
+                    <a href="#documentation">Documentation</a>
+                    <a href="#roadmap">Roadmap</a>
+
+                    <!-- Direct links into wiki HTML pages -->
+                    <a href="docs/wiki/index.html">Wiki home</a>
+                    <a href="docs/wiki/getting-started.html"
+                        >Wiki: Getting started</a
+                    >
+                    <a href="docs/wiki/architecture.html">Wiki: Architecture</a>
+                    <a href="docs/wiki/rendering-loop.html"
+                        >Wiki: Rendering loop</a
+                    >
+                    <a href="docs/wiki/assets-shaders.html"
+                        >Wiki: Assets &amp; shaders</a
+                    >
+                    <a href="docs/wiki/api-map.html">Wiki: API map</a>
+                    <a href="docs/wiki/troubleshooting.html"
+                        >Wiki: Troubleshooting</a
+                    >
+                </nav>
+
+                <div class="sidebar-footer">
+                    <a class="button primary" href="docs/wiki/index.html"
+                        >Read the Wiki</a
+                    >
+                    <a class="button" href="docs/doxygen/html/index.html"
+                        >API Reference</a
+                    >
+                    <a
+                        class="button"
+                        href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer"
+                        target="_blank"
+                        rel="noreferrer"
+                        >View on GitHub</a
+                    >
+                    <a
+                        class="button"
+                        href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/issues"
+                        target="_blank"
+                        rel="noreferrer"
+                        >Suggest an idea</a
+                    >
+                </div>
+            </aside>
+
+            <main class="content">
+                <div class="topbar">
+                    <div class="crumb">Home / Raiju Renderer / Vulkan 1.3</div>
+                    <div class="search">Search documentation...</div>
+                </div>
+
+                <section class="hero" id="overview">
+                    <span class="eyebrow"
+                        ><span class="pulse"></span>Prototype / Final Year
+                        Project</span
+                    >
+                    <h2>
+                        <span class="gradient"
+                            >Real-time graphics made visible.</span
+                        >
+                    </h2>
+                    <p class="lead">
+                        Raiju Renderer is a focused Vulkan renderer designed to
+                        show the normally hidden work behind real-time graphics.
+                        It turns model data, texture data, synchronisation
+                        rules, command buffers, and GPU resources into something
+                        that can be inspected, explained, and extended.
+                    </p>
+                    <div class="badges">
+                        <span class="badge">Vulkan 1.3</span>
+                        <span class="badge">C++20</span>
+                        <span class="badge">Dynamic Rendering</span>
+                        <span class="badge">Linux + Windows</span>
+                        <span class="badge">Open Source</span>
+                    </div>
+                </section>
+
+                <article class="post-card" id="screenshots">
+                    <div class="post-meta">Prototype evidence</div>
+                    <h3>Current renderer output</h3>
+                    <p class="lead">
+                        The renderer is being built in milestones. These
+                        screenshots show the jump from the first Vulkan baseline
+                        to the current textured OBJ vertical slice.
+                    </p>
+
+                    <div class="screens">
+                        <div class="screen">
+                            <img
+                                src="docs/prototype-evidence/M1-triangle.png"
+                                alt="Milestone 1 Vulkan triangle"
+                            />
+                            <div>
+                                <h4>Milestone 1: Vulkan baseline</h4>
+                                <p>
+                                    Window creation, swapchain setup, graphics
+                                    pipeline, command recording, and
+                                    presentation.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="screen">
+                            <img
+                                src="docs/prototype-evidence/M2-textured-obj.png"
+                                alt="Milestone 2 textured OBJ scene"
+                            />
+                            <div>
+                                <h4>Milestone 2: Textured model</h4>
+                                <p>
+                                    OBJ loading, texture upload, descriptor
+                                    binding, depth testing, debug UI, and
+                                    visible model output.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-card" id="features">
+                    <div class="post-meta">Supported features</div>
+                    <h3>Small enough to understand. Real enough to matter.</h3>
+
+                    <div class="feature-grid">
+                        <div class="feature">
+                            <strong>Dynamic Rendering</strong>
+                            <p>
+                                No legacy render pass or framebuffer path for
+                                the main colour/depth pass.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Textured OBJ path</strong>
+                            <p>
+                                Loads an OBJ mesh, uploads vertex/index buffers,
+                                loads a texture, and draws indexed geometry.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Debug UI</strong>
+                            <p>
+                                Shows frame timing and supports wireframe,
+                                culling, and normals visualisation.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Explicit sync</strong>
+                            <p>
+                                Uses fences, semaphores, and image barriers to
+                                keep the frame lifecycle explainable.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Resize recovery</strong>
+                            <p>
+                                Rebuilds swapchain-dependent resources when the
+                                window changes size.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Research direction</strong>
+                            <p>
+                                Acts as a foundation for future PBR, scene
+                                loading, and Gaussian splatting work.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-card" id="build">
+                    <div class="post-meta">Getting started</div>
+                    <h3>Build and run</h3>
+                    <p>
+                        Requirements: Vulkan 1.3 capable GPU, C++20 compiler,
+                        CMake 3.25+, Vulkan SDK, and vcpkg.
+                    </p>
+
+                    <pre class="code">
+git clone https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer.git
 cd FYP-Vulkan-Renderer
 
 cmake --preset linux-debug
 cmake --build --preset linux-debug
-./build/linux-debug/vulkan-renderer</pre>
-      </article>
+./build/linux-debug/vulkan-renderer</pre
+                    >
+                </article>
 
-      <article class="post-card" id="architecture">
-        <div class="post-meta">Architecture</div>
-        <h3>Core systems</h3>
-        <div class="feature-grid">
-          <div class="feature"><strong>Application</strong><p>Coordinates startup, render loop, UI, asset selection, resize recovery, and teardown.</p></div>
-          <div class="feature"><strong>VulkanContext</strong><p>Owns instance, device, queue, surface, debug messenger, and allocator.</p></div>
-          <div class="feature"><strong>SwapChain</strong><p>Owns swapchain images, colour views, depth resources, and rebuild logic.</p></div>
-          <div class="feature"><strong>Renderer</strong><p>Owns command buffers, fences, semaphores, frame submission, and ImGui rendering.</p></div>
-          <div class="feature"><strong>Mesh</strong><p>Loads OBJ geometry and uploads GPU vertex/index buffers.</p></div>
-          <div class="feature"><strong>Material</strong><p>Loads textures and creates image, sampler, descriptor pool, and descriptor set.</p></div>
+                <article class="post-card" id="architecture">
+                    <div class="post-meta">Architecture</div>
+                    <h3>Core systems</h3>
+                    <div class="feature-grid">
+                        <div class="feature">
+                            <strong>Application</strong>
+                            <p>
+                                Coordinates startup, render loop, UI, asset
+                                selection, resize recovery, and teardown.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>VulkanContext</strong>
+                            <p>
+                                Owns instance, device, queue, surface, debug
+                                messenger, and allocator.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>SwapChain</strong>
+                            <p>
+                                Owns swapchain images, colour views, depth
+                                resources, and rebuild logic.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Renderer</strong>
+                            <p>
+                                Owns command buffers, fences, semaphores, frame
+                                submission, and ImGui rendering.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Mesh</strong>
+                            <p>
+                                Loads OBJ geometry and uploads GPU vertex/index
+                                buffers.
+                            </p>
+                        </div>
+                        <div class="feature">
+                            <strong>Material</strong>
+                            <p>
+                                Loads textures and creates image, sampler,
+                                descriptor pool, and descriptor set.
+                            </p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-card" id="documentation">
+                    <div class="post-meta">Documentation</div>
+                    <h3>Wiki and API reference</h3>
+                    <p class="lead">
+                        The documentation is split into a readable wiki for end
+                        users and generated Doxygen pages for exact API details.
+                        Start with the wiki to understand the renderer, then
+                        jump into class and source pages when you need
+                        implementation-level detail.
+                    </p>
+                    <div class="feature-grid">
+                        <a class="feature" href="docs/wiki/getting-started.html"
+                            ><strong>Getting started</strong>
+                            <p>
+                                Requirements, CMake presets, build commands, run
+                                paths, validation layers, and first runtime
+                                checks.
+                            </p></a
+                        >
+                        <a class="feature" href="docs/wiki/architecture.html"
+                            ><strong>Architecture</strong>
+                            <p>
+                                Responsibilities and ownership for Application,
+                                VulkanContext, SwapChain, Renderer, Pipeline,
+                                Mesh, Material, and upload helpers.
+                            </p></a
+                        >
+                        <a class="feature" href="docs/wiki/rendering-loop.html"
+                            ><strong>Rendering loop</strong>
+                            <p>
+                                A frame-by-frame breakdown of acquire, barriers,
+                                Dynamic Rendering, draw calls, submit, present,
+                                and resize recovery.
+                            </p></a
+                        >
+                        <a class="feature" href="docs/wiki/assets-shaders.html"
+                            ><strong>Assets and shaders</strong>
+                            <p>
+                                OBJ loading, texture upload, descriptor binding,
+                                shader compilation, push constants, and debug
+                                view modes.
+                            </p></a
+                        >
+                        <a class="feature" href="docs/wiki/api-map.html"
+                            ><strong>API map</strong>
+                            <p>
+                                Curated entry points into Doxygen classes,
+                                structs, source files, member indexes, globals,
+                                and namespaces.
+                            </p></a
+                        >
+                        <a class="feature" href="docs/wiki/troubleshooting.html"
+                            ><strong>Troubleshooting</strong>
+                            <p>
+                                Common build, runtime, shader, asset, Vulkan
+                                loader, and rendering issues with likely fixes.
+                            </p></a
+                        >
+                    </div>
+                </article>
+
+                <article class="post-card" id="roadmap">
+                    <div class="post-meta">Roadmap</div>
+                    <h3>Where the renderer goes next</h3>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <span class="label">Current</span>
+                            <div>
+                                <h4>Milestone 2 vertical slice</h4>
+                                <p>
+                                    Textured OBJ rendering, Dynamic Rendering,
+                                    depth, ImGui debug controls, and resize-safe
+                                    swapchain handling.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="label">Next</span>
+                            <div>
+                                <h4>Polish and documentation</h4>
+                                <p>
+                                    More screenshots, RenderDoc captures, build
+                                    troubleshooting, and clearer public
+                                    documentation.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="label">Future</span>
+                            <div>
+                                <h4>Advanced rendering</h4>
+                                <p>
+                                    Mipmaps, PBR, scene loading, shadow mapping,
+                                    and Gaussian splat experiments.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <footer>
+                    &copy; <span id="year"></span> Raiju Renderer. Built as an
+                    open-source Vulkan renderer and learning resource.
+                </footer>
+            </main>
+
+            <aside class="toc">
+                <strong>On this page</strong>
+                <a href="#overview">Overview</a>
+                <a href="#screenshots">Screenshots</a>
+                <a href="#features">Features</a>
+                <a href="#build">Build</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#documentation">Documentation</a>
+                <a href="#roadmap">Roadmap</a>
+            </aside>
         </div>
-      </article>
 
-      <article class="post-card" id="documentation">
-        <div class="post-meta">Documentation</div>
-        <h3>Wiki and API reference</h3>
-        <p class="lead">The documentation is split into a readable wiki for end users and generated Doxygen pages for exact API details. Start with the wiki to understand the renderer, then jump into class and source pages when you need implementation-level detail.</p>
-        <div class="feature-grid">
-          <a class="feature" href="docs/wiki/getting-started.html"><strong>Getting started</strong><p>Requirements, CMake presets, build commands, run paths, validation layers, and first runtime checks.</p></a>
-          <a class="feature" href="docs/wiki/architecture.html"><strong>Architecture</strong><p>Responsibilities and ownership for Application, VulkanContext, SwapChain, Renderer, Pipeline, Mesh, Material, and upload helpers.</p></a>
-          <a class="feature" href="docs/wiki/rendering-loop.html"><strong>Rendering loop</strong><p>A frame-by-frame breakdown of acquire, barriers, Dynamic Rendering, draw calls, submit, present, and resize recovery.</p></a>
-          <a class="feature" href="docs/wiki/assets-shaders.html"><strong>Assets and shaders</strong><p>OBJ loading, texture upload, descriptor binding, shader compilation, push constants, and debug view modes.</p></a>
-          <a class="feature" href="docs/wiki/api-map.html"><strong>API map</strong><p>Curated entry points into Doxygen classes, structs, source files, member indexes, globals, and namespaces.</p></a>
-          <a class="feature" href="docs/wiki/troubleshooting.html"><strong>Troubleshooting</strong><p>Common build, runtime, shader, asset, Vulkan loader, and rendering issues with likely fixes.</p></a>
-        </div>
-      </article>
-
-      <article class="post-card" id="roadmap">
-        <div class="post-meta">Roadmap</div>
-        <h3>Where the renderer goes next</h3>
-        <div class="timeline">
-          <div class="timeline-item"><span class="label">Current</span><div><h4>Milestone 2 vertical slice</h4><p>Textured OBJ rendering, Dynamic Rendering, depth, ImGui debug controls, and resize-safe swapchain handling.</p></div></div>
-          <div class="timeline-item"><span class="label">Next</span><div><h4>Polish and documentation</h4><p>More screenshots, RenderDoc captures, build troubleshooting, and clearer public documentation.</p></div></div>
-          <div class="timeline-item"><span class="label">Future</span><div><h4>Advanced rendering</h4><p>Mipmaps, PBR, scene loading, shadow mapping, and Gaussian splat experiments.</p></div></div>
-        </div>
-      </article>
-
-      <footer>
-        &copy; <span id="year"></span> Raiju Renderer. Built as an open-source Vulkan renderer and learning resource.
-      </footer>
-    </main>
-
-    <aside class="toc">
-      <strong>On this page</strong>
-      <a href="#overview">Overview</a>
-      <a href="#screenshots">Screenshots</a>
-      <a href="#features">Features</a>
-      <a href="#build">Build</a>
-      <a href="#architecture">Architecture</a>
-      <a href="#documentation">Documentation</a>
-      <a href="#roadmap">Roadmap</a>
-    </aside>
-  </div>
-
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
-</body>
+        <script>
+            document.getElementById("year").textContent =
+                new Date().getFullYear();
+        </script>
+    </body>
 </html>
