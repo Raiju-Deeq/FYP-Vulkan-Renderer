@@ -435,6 +435,60 @@
       font-weight: 900;
     }
 
+
+    .screenshot-section {
+      padding-top: 20px;
+    }
+
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .screenshot-card {
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .screenshot-frame {
+      padding: 14px;
+      background:
+        radial-gradient(circle at 20% 0, rgba(65, 0, 144, 0.10), transparent 34%),
+        linear-gradient(180deg, #ffffff, #f4efff);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .screenshot-frame img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      border-radius: 18px;
+      border: 1px solid rgba(65, 0, 144, 0.16);
+      box-shadow: 0 18px 44px rgba(65, 0, 144, 0.12);
+      background: #fff;
+    }
+
+    .screenshot-body {
+      padding: 22px;
+    }
+
+    .screenshot-body h3 {
+      font-size: 1.35rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 8px;
+    }
+
+    .screenshot-body p {
+      color: var(--muted);
+      margin: 0;
+    }
+
     .steps {
       counter-reset: step;
       display: grid;
@@ -545,7 +599,7 @@
     .footlinks a:hover { color: var(--brand); }
 
     @media (max-width: 960px) {
-      .hero-grid, .showcase, .grid3, .grid2 { grid-template-columns: 1fr; }
+      .hero-grid, .showcase, .grid3, .grid2, .screenshot-grid { grid-template-columns: 1fr; }
       .links { display: none; }
       .hero { padding-top: 64px; }
       .road { grid-template-columns: 1fr; }
@@ -576,6 +630,7 @@
     <nav class="links">
       <a href="#what">What it is</a>
       <a href="#features">Features</a>
+      <a href="#gallery">Screenshots</a>
       <a href="#build">Build</a>
       <a href="#roadmap">Roadmap</a>
     </nav>
@@ -645,6 +700,36 @@
         </ul>
       </div>
       <div class="visual"><div class="wire"></div></div>
+    </div>
+  </section>
+
+  <section id="gallery" class="screenshot-section">
+    <div class="container">
+      <p class="kicker">Prototype evidence</p>
+      <h2 class="heading">Actual screenshots from the renderer.</h2>
+      <p class="copy">These captures show the project moving from the first Vulkan milestone into the current textured OBJ vertical slice. They make the renderer easier to understand at a glance, especially for visitors who are not graphics programmers.</p>
+
+      <div class="screenshot-grid">
+        <article class="screenshot-card">
+          <div class="screenshot-frame">
+            <img src="docs/prototype-evidence/M1-triangle.png" alt="Milestone 1 Vulkan triangle rendered in Raiju Renderer">
+          </div>
+          <div class="screenshot-body">
+            <h3>Milestone 1: Vulkan baseline</h3>
+            <p>The first working rendering path: a Vulkan window, swapchain, graphics pipeline, command recording, and presentation working together.</p>
+          </div>
+        </article>
+
+        <article class="screenshot-card">
+          <div class="screenshot-frame">
+            <img src="docs/prototype-evidence/M2-textured-obj.png" alt="Milestone 2 textured OBJ model rendered in Raiju Renderer">
+          </div>
+          <div class="screenshot-body">
+            <h3>Milestone 2: Textured 3D model</h3>
+            <p>The current vertical slice: OBJ loading, texture upload, descriptors, depth rendering, debug controls, and a visible rendered scene.</p>
+          </div>
+        </article>
+      </div>
     </div>
   </section>
 
