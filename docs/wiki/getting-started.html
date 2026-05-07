@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Build and run guide for Raiju Renderer.">
+  <title>Getting Started | Raiju Renderer Wiki</title>
+  <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>Build, run, inspect.</p></div></div>
+      <nav class="nav">
+        <a href="../../index.html">Product page</a>
+        <a href="index.html">Wiki home</a>
+        <a href="getting-started.html" aria-current="page">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="rendering-loop.html">Rendering loop</a>
+        <a href="assets-shaders.html">Assets and shaders</a>
+        <a href="api-map.html">API map</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/index.html">Doxygen API</a></div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar"><div class="crumb">Wiki / Getting started</div></div>
+      <section class="hero" id="overview">
+        <span class="eyebrow">Setup guide</span>
+        <h2>Getting Started</h2>
+        <p class="lead">This page turns the repository setup into a predictable checklist. The renderer expects a Vulkan 1.3 capable GPU, a C++20 compiler, CMake, vcpkg, compiled SPIR-V shaders, and runtime assets beside the executable.</p>
+      </section>
+
+      <article class="card" id="requirements">
+        <div class="meta">Requirements</div>
+        <h3>Software and hardware</h3>
+        <div class="grid">
+          <div class="tile"><strong>Operating system</strong><p>Windows or Linux. The code has platform definitions for Win32 and Xlib targets.</p></div>
+          <div class="tile"><strong>Compiler</strong><p>Any C++20 capable compiler supported by the selected CMake generator.</p></div>
+          <div class="tile"><strong>Graphics stack</strong><p>Vulkan 1.3 driver, Vulkan loader, and validation layers for development.</p></div>
+          <div class="tile"><strong>Dependencies</strong><p>vcpkg manifest mode installs vk-bootstrap, GLFW, GLM, VMA, stb, tinyobjloader, ImGui, shaderc, and spdlog.</p></div>
+        </div>
+      </article>
+
+      <article class="card" id="presets">
+        <div class="meta">Build presets</div>
+        <h3>CMake presets</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Preset</th><th>Platform</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td><code>linux-debug</code></td><td>Linux</td><td>Development build with validation-friendly flags.</td></tr>
+              <tr><td><code>linux-release</code></td><td>Linux</td><td>Optimised Linux build.</td></tr>
+              <tr><td><code>uni-debug</code></td><td>Windows</td><td>University/Windows debug build, currently present under <code>build/uni-debug</code>.</td></tr>
+              <tr><td><code>uni-release</code></td><td>Windows</td><td>Optimised Windows build.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card" id="windows">
+        <div class="meta">Windows</div>
+        <h3>Configure, build, run</h3>
+        <pre class="code">git clone https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer.git
+cd FYP-Vulkan-Renderer
+
+git clone https://github.com/microsoft/vcpkg "$env:USERPROFILE\vcpkg"
+& "$env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat"
+
+$env:VCPKG_ROOT = "$env:USERPROFILE\vcpkg"
+$env:PATH = "$env:VCPKG_ROOT;$env:PATH"
+
+cmake --preset uni-debug
+cmake --build --preset uni-debug
+.\build\uni-debug\Debug\vulkan-renderer.exe</pre>
+        <p>The executable should be run from, or with access to, the generated output directory because CMake copies <code>assets/</code> and <code>shaders/</code> beside the executable after build.</p>
+      </article>
+
+      <article class="card" id="linux">
+        <div class="meta">Linux</div>
+        <h3>Configure, build, run</h3>
+        <pre class="code">git clone https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer.git
+cd FYP-Vulkan-Renderer
+
+git clone https://github.com/microsoft/vcpkg "$HOME/vcpkg"
+"$HOME/vcpkg/bootstrap-vcpkg.sh"
+export VCPKG_ROOT="$HOME/vcpkg"
+
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./build/linux-debug/vulkan-renderer</pre>
+        <p>On Linux, the CMake file deliberately prefers the system Vulkan loader instead of the vcpkg loader stub so the runtime can find installed ICD driver files.</p>
+      </article>
+
+      <article class="card" id="first-checks">
+        <div class="meta">First checks</div>
+        <h3>Expected runtime behaviour</h3>
+        <div class="grid">
+          <div class="tile"><strong>Window</strong><p>The app opens a 1280x720 GLFW window titled <code>FYP Vulkan Renderer</code>.</p></div>
+          <div class="tile"><strong>Scene</strong><p>The default <code>viking_room.obj</code> and <code>viking_room.png</code> assets should render as a rotating textured model.</p></div>
+          <div class="tile"><strong>Debug panel</strong><p>The ImGui panel shows FPS, frame time, camera distance, frame-time graph, culling, wireframe, normals view, and asset browser buttons.</p></div>
+          <div class="tile"><strong>Resize</strong><p>Resizing or minimising should not crash. A resize triggers swapchain, per-image sync, pipelines, material descriptors, and ImGui backend recreation.</p></div>
+        </div>
+      </article>
+
+      <footer>Next: read <a class="inline-link" href="architecture.html">Architecture</a> to understand how the systems fit together.</footer>
+    </main>
+
+    <aside class="toc">
+      <strong>On this page</strong>
+      <a href="#overview">Overview</a>
+      <a href="#requirements">Requirements</a>
+      <a href="#presets">Presets</a>
+      <a href="#windows">Windows</a>
+      <a href="#linux">Linux</a>
+      <a href="#first-checks">First checks</a>
+    </aside>
+  </div>
+</body>
+</html>

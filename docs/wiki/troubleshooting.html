@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Troubleshooting guide for Raiju Renderer.">
+  <title>Troubleshooting | Raiju Renderer Wiki</title>
+  <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>Failure modes.</p></div></div>
+      <nav class="nav">
+        <a href="../../index.html">Product page</a>
+        <a href="index.html">Wiki home</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="rendering-loop.html">Rendering loop</a>
+        <a href="assets-shaders.html">Assets and shaders</a>
+        <a href="api-map.html">API map</a>
+        <a href="troubleshooting.html" aria-current="page">Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/index.html">Doxygen API</a></div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar"><div class="crumb">Wiki / Troubleshooting</div></div>
+      <section class="hero" id="overview">
+        <span class="eyebrow">Support guide</span>
+        <h2>Troubleshooting</h2>
+        <p class="lead">Most failures in this project fall into five groups: missing Vulkan runtime support, missing dependencies, wrong working directory, stale shader bytecode, or swapchain state changes after resize/minimise.</p>
+      </section>
+
+      <article class="card" id="build">
+        <div class="meta">Build issues</div>
+        <h3>CMake and dependency checks</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+            <tbody>
+              <tr><td>CMake cannot find packages.</td><td><code>VCPKG_ROOT</code> is not set or vcpkg was not bootstrapped.</td><td>Set <code>VCPKG_ROOT</code>, put vcpkg on <code>PATH</code>, then re-run the preset.</td></tr>
+              <tr><td><code>glslc not found</code> warning.</td><td>Vulkan SDK or shaderc tools are not available to CMake.</td><td>Install Vulkan SDK or ensure the vcpkg shaderc tool path exists. Shaders can also be compiled manually.</td></tr>
+              <tr><td>Linux instance/window extension errors.</td><td>The app is using the wrong Vulkan loader or no display server compatible with GLFW/Vulkan is available.</td><td>Install the system Vulkan loader and ICD packages. The CMake file tries to prefer the system loader on Linux.</td></tr>
+              <tr><td>MSVC warning-as-error build failure.</td><td>The project uses <code>/W4 /WX</code>; new warnings are treated as blocking defects.</td><td>Fix the warning rather than disabling broad warning coverage.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card" id="runtime">
+        <div class="meta">Runtime issues</div>
+        <h3>Renderer startup failures</h3>
+        <div class="grid">
+          <div class="tile"><strong>No suitable GPU</strong><p><code>VulkanContext</code> requires Vulkan 1.3, Dynamic Rendering, synchronization2, fillModeNonSolid, and bufferDeviceAddress. Update drivers or use a compatible GPU.</p></div>
+          <div class="tile"><strong>Shader file missing</strong><p>The app opens <code>shaders/mesh.vert.spv</code> and <code>shaders/mesh.frag.spv</code> relative to the working directory. Run from the output directory or ensure CMake copied shaders there.</p></div>
+          <div class="tile"><strong>Asset file missing</strong><p>The defaults are <code>assets/models/viking_room.obj</code> and <code>assets/textures/viking_room.png</code>. CMake should copy assets beside the executable after build.</p></div>
+          <div class="tile"><strong>Texture load failure</strong><p>stb_image handles common formats, with ASCII PPM fallback. Check file path, extension, and file integrity.</p></div>
+        </div>
+      </article>
+
+      <article class="card" id="rendering">
+        <div class="meta">Rendering issues</div>
+        <h3>Visual output checks</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely cause</th><th>What to inspect</th></tr></thead>
+            <tbody>
+              <tr><td>Black window.</td><td>Shader path, material descriptor, texture upload, or mesh upload failed before draw.</td><td>Application log, <code>Pipeline::loadSpv</code>, <code>Material::init</code>, <code>Mesh::upload</code>.</td></tr>
+              <tr><td>Model appears inside-out or invisible with culling.</td><td>OBJ winding or import transform does not match expected front face.</td><td>Disable back-face culling in ImGui, enable wireframe, inspect <code>Pipeline</code> front face and <code>loadObjMesh</code> import transform.</td></tr>
+              <tr><td>Depth looks wrong.</td><td>Depth attachment, projection matrix, or GLM depth configuration issue.</td><td><code>GLM_FORCE_DEPTH_ZERO_TO_ONE</code>, <code>SwapChain::createDepthResources</code>, and pipeline depth state.</td></tr>
+              <tr><td>Normal debug colours look incorrect.</td><td>Missing normals in OBJ or bad normal transform.</td><td><code>loadObjMesh</code> normal fallback and normals view in <code>mesh.frag</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card" id="docs">
+        <div class="meta">Documentation</div>
+        <h3>Regenerating Doxygen</h3>
+        <p>The Doxygen config reads <code>README.md</code>, <code>src/</code>, and <code>docs/dev-log/</code>, then writes generated HTML to <code>docs/doxygen/html</code>.</p>
+        <pre class="code">cmake --build --preset uni-debug --target docs</pre>
+        <p>If Doxygen is not installed, CMake will skip the <code>docs</code> target because <code>find_package(Doxygen QUIET)</code> fails.</p>
+      </article>
+
+      <article class="card" id="source-links">
+        <div class="meta">Useful Doxygen pages</div>
+        <h3>Jump to likely failure points</h3>
+        <div class="grid">
+          <a class="tile" href="../doxygen/html/vulkan__context_8cpp_source.html"><strong>Vulkan startup</strong><p>Instance, surface, physical device, logical device, queue, allocator.</p></a>
+          <a class="tile" href="../doxygen/html/graphics__pipeline_8cpp_source.html"><strong>Pipeline startup</strong><p>SPIR-V loading and pipeline creation.</p></a>
+          <a class="tile" href="../doxygen/html/mesh_8cpp_source.html"><strong>Mesh loading</strong><p>OBJ parsing and GPU buffer upload.</p></a>
+          <a class="tile" href="../doxygen/html/texture_8cpp_source.html"><strong>Texture loading</strong><p>Image decode, upload, sampler, descriptor set.</p></a>
+        </div>
+      </article>
+
+      <footer>For exact API signatures, use the <a class="inline-link" href="api-map.html">API map</a>.</footer>
+    </main>
+
+    <aside class="toc">
+      <strong>On this page</strong>
+      <a href="#overview">Overview</a>
+      <a href="#build">Build</a>
+      <a href="#runtime">Runtime</a>
+      <a href="#rendering">Rendering</a>
+      <a href="#docs">Docs</a>
+      <a href="#source-links">Source links</a>
+    </aside>
+  </div>
+</body>
+</html>

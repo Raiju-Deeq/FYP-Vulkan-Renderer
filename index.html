@@ -445,11 +445,14 @@
         <a href="#features">Features</a>
         <a href="#build">Build</a>
         <a href="#architecture">Architecture</a>
+        <a href="#documentation">Documentation</a>
         <a href="#roadmap">Roadmap</a>
       </nav>
 
       <div class="sidebar-footer">
-        <a class="button primary" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer" target="_blank" rel="noreferrer">View on GitHub</a>
+        <a class="button primary" href="docs/wiki/index.html">Read the Wiki</a>
+        <a class="button" href="docs/doxygen/html/index.html">API Reference</a>
+        <a class="button" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer" target="_blank" rel="noreferrer">View on GitHub</a>
         <a class="button" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer/issues" target="_blank" rel="noreferrer">Suggest an idea</a>
       </div>
     </aside>
@@ -537,6 +540,20 @@ cmake --build --preset linux-debug
         </div>
       </article>
 
+      <article class="post-card" id="documentation">
+        <div class="post-meta">Documentation</div>
+        <h3>Wiki and API reference</h3>
+        <p class="lead">The documentation is split into a readable wiki for end users and generated Doxygen pages for exact API details. Start with the wiki to understand the renderer, then jump into class and source pages when you need implementation-level detail.</p>
+        <div class="feature-grid">
+          <a class="feature" href="docs/wiki/getting-started.html"><strong>Getting started</strong><p>Requirements, CMake presets, build commands, run paths, validation layers, and first runtime checks.</p></a>
+          <a class="feature" href="docs/wiki/architecture.html"><strong>Architecture</strong><p>Responsibilities and ownership for Application, VulkanContext, SwapChain, Renderer, Pipeline, Mesh, Material, and upload helpers.</p></a>
+          <a class="feature" href="docs/wiki/rendering-loop.html"><strong>Rendering loop</strong><p>A frame-by-frame breakdown of acquire, barriers, Dynamic Rendering, draw calls, submit, present, and resize recovery.</p></a>
+          <a class="feature" href="docs/wiki/assets-shaders.html"><strong>Assets and shaders</strong><p>OBJ loading, texture upload, descriptor binding, shader compilation, push constants, and debug view modes.</p></a>
+          <a class="feature" href="docs/wiki/api-map.html"><strong>API map</strong><p>Curated entry points into Doxygen classes, structs, source files, member indexes, globals, and namespaces.</p></a>
+          <a class="feature" href="docs/wiki/troubleshooting.html"><strong>Troubleshooting</strong><p>Common build, runtime, shader, asset, Vulkan loader, and rendering issues with likely fixes.</p></a>
+        </div>
+      </article>
+
       <article class="post-card" id="roadmap">
         <div class="post-meta">Roadmap</div>
         <h3>Where the renderer goes next</h3>
@@ -548,7 +565,7 @@ cmake --build --preset linux-debug
       </article>
 
       <footer>
-        © <span id="year"></span> Raiju Renderer. Built as an open-source Vulkan renderer and learning resource.
+        &copy; <span id="year"></span> Raiju Renderer. Built as an open-source Vulkan renderer and learning resource.
       </footer>
     </main>
 
@@ -559,6 +576,7 @@ cmake --build --preset linux-debug
       <a href="#features">Features</a>
       <a href="#build">Build</a>
       <a href="#architecture">Architecture</a>
+      <a href="#documentation">Documentation</a>
       <a href="#roadmap">Roadmap</a>
     </aside>
   </div>

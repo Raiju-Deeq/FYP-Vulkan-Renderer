@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Assets and shaders guide for Raiju Renderer.">
+  <title>Assets and Shaders | Raiju Renderer Wiki</title>
+  <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="profile"><div class="avatar">R</div><div><h1>Raiju Wiki</h1><p>Asset pipeline.</p></div></div>
+      <nav class="nav">
+        <a href="../../index.html">Product page</a>
+        <a href="index.html">Wiki home</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="rendering-loop.html">Rendering loop</a>
+        <a href="assets-shaders.html" aria-current="page">Assets and shaders</a>
+        <a href="api-map.html">API map</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer"><a class="button primary" href="../doxygen/html/mesh_8hpp.html">Mesh API</a></div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar"><div class="crumb">Wiki / Assets and shaders</div></div>
+      <section class="hero" id="overview">
+        <span class="eyebrow">Data path</span>
+        <h2>Assets and Shaders</h2>
+        <p class="lead">The current renderer draws one textured OBJ mesh. CPU asset data is loaded with tinyobjloader and stb_image, then staged into device-local Vulkan buffers and images before being bound through the pipeline and material descriptor set.</p>
+      </section>
+
+      <article class="card" id="assets">
+        <div class="meta">Runtime assets</div>
+        <h3>Default files</h3>
+        <div class="grid">
+          <div class="tile"><strong>Model</strong><p><code>assets/models/viking_room.obj</code> is the default startup mesh. The asset browser can select other <code>.obj</code> files.</p></div>
+          <div class="tile"><strong>Texture</strong><p><code>assets/textures/viking_room.png</code> is the default albedo texture. The browser allows <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.tga</code>, and <code>.ppm</code>.</p></div>
+          <div class="tile"><strong>Build output</strong><p>CMake copies <code>assets/</code> beside the executable after build so relative runtime paths resolve from the output directory.</p></div>
+          <div class="tile"><strong>Prototype evidence</strong><p>Screenshots live in <code>docs/prototype-evidence/</code> and are used by the product page.</p></div>
+        </div>
+      </article>
+
+      <article class="card" id="mesh">
+        <div class="meta">Mesh loading</div>
+        <h3>OBJ to indexed draw</h3>
+        <div class="steps">
+          <div class="step"><div><h4>Parse OBJ</h4><p><code>loadObjMesh</code> uses tinyobjloader with triangulation enabled so the draw path can stay as a triangle list.</p></div></div>
+          <div class="step"><div><h4>Repack vertex streams</h4><p>OBJ positions, normals, and UVs are repacked into the renderer's interleaved <code>Vertex</code> struct: position, normal, texCoord.</p></div></div>
+          <div class="step"><div><h4>Correct import orientation</h4><p>The current import transform rotates the Viking OBJ by -90 degrees around X at load time, keeping the per-frame model matrix focused on placement and animation.</p></div></div>
+          <div class="step"><div><h4>Upload buffers</h4><p><code>Mesh::upload</code> sends vertices and indices through <code>GpuBuffer::uploadBuffer</code> into device-local vertex and index buffers.</p></div></div>
+        </div>
+      </article>
+
+      <article class="card" id="texture">
+        <div class="meta">Texture loading</div>
+        <h3>Image to descriptor set</h3>
+        <div class="steps">
+          <div class="step"><div><h4>Load RGBA8</h4><p><code>loadRgba8Texture</code> uses stb_image and forces four channels. ASCII PPM is retained as a fallback for generated prototype textures.</p></div></div>
+          <div class="step"><div><h4>Upload image</h4><p><code>GpuBuffer::uploadTexture2D</code> stages pixels, creates an <code>R8G8B8A8_SRGB</code> image, copies pixels, transitions to shader-read layout, and creates an image view.</p></div></div>
+          <div class="step"><div><h4>Create sampler and descriptor</h4><p><code>Material::init</code> creates a linear sampler, a one-set descriptor pool, allocates a descriptor set, and writes set 0 binding 0 as a combined image sampler.</p></div></div>
+          <div class="step"><div><h4>Bind before draw</h4><p><code>Material::bindDescriptorSet</code> binds the descriptor set against the active pipeline layout before push constants and mesh draw.</p></div></div>
+        </div>
+      </article>
+
+      <article class="card" id="shaders">
+        <div class="meta">Shaders</div>
+        <h3>GLSL and SPIR-V</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Role</th><th>Key interface</th></tr></thead>
+            <tbody>
+              <tr><td><code>shaders/mesh.vert</code></td><td>Main vertex shader.</td><td>Reads position, normal, UV. Push constant contains MVP and debug mode. Outputs UV and normal.</td></tr>
+              <tr><td><code>shaders/mesh.frag</code></td><td>Main fragment shader.</td><td>Samples set 0 binding 0. Uses debug mode 0 for lit texture, debug mode 1 for normal visualisation.</td></tr>
+              <tr><td><code>shaders/triangle.vert/.frag</code></td><td>Earlier prototype shaders.</td><td>Kept for milestone history and shader compilation coverage.</td></tr>
+              <tr><td><code>*.spv</code></td><td>Compiled shader bytecode.</td><td>Generated by <code>glslc</code> through the CMake shader target and copied to the output directory.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card" id="source-links">
+        <div class="meta">Doxygen links</div>
+        <h3>Read the exact implementation</h3>
+        <div class="grid">
+          <a class="tile" href="../doxygen/html/class_mesh.html"><strong>Mesh class</strong><p>GPU vertex/index buffer ownership and draw helpers.</p></a>
+          <a class="tile" href="../doxygen/html/mesh_8cpp_source.html"><strong>mesh.cpp source</strong><p>OBJ parse, import transform, and upload handoff.</p></a>
+          <a class="tile" href="../doxygen/html/class_material.html"><strong>Material class</strong><p>Texture resource, sampler, descriptor pool, descriptor set.</p></a>
+          <a class="tile" href="../doxygen/html/gpu__buffer_8cpp_source.html"><strong>gpu_buffer.cpp source</strong><p>Staging buffer and image transition helpers.</p></a>
+        </div>
+      </article>
+
+      <footer>Next: use the <a class="inline-link" href="api-map.html">API map</a> to jump into Doxygen.</footer>
+    </main>
+
+    <aside class="toc">
+      <strong>On this page</strong>
+      <a href="#overview">Overview</a>
+      <a href="#assets">Assets</a>
+      <a href="#mesh">Mesh loading</a>
+      <a href="#texture">Texture loading</a>
+      <a href="#shaders">Shaders</a>
+      <a href="#source-links">Source links</a>
+    </aside>
+  </div>
+</body>
+</html>
