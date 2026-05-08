@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Raiju Renderer wiki home for users and contributors." />
+  <meta name="theme-color" content="#410090" />
+  <title>Raiju Renderer Wiki</title>
+
+  <style>
+    :root {
+      --brand: #410090;
+      --brand-2: #6f32c9;
+      --brand-soft: rgba(65, 0, 144, 0.09);
+      --brand-mid: rgba(65, 0, 144, 0.18);
+      --bg: #f7f4ff;
+      --surface: rgba(255, 255, 255, 0.82);
+      --surface-strong: #ffffff;
+      --text: #21172f;
+      --muted: #62566f;
+      --line: rgba(65, 0, 144, 0.14);
+      --shadow: 0 24px 70px rgba(65, 0, 144, 0.12);
+      --radius: 24px;
+      --sidebar: 292px;
+      --toc: 230px;
+      --max-content: 1040px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      line-height: 1.65;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(65, 0, 144, 0.15), transparent 34rem),
+        radial-gradient(circle at 88% 12%, rgba(111, 50, 201, 0.10), transparent 30rem),
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 42%, #ffffff 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    code {
+      padding: 0.12rem 0.32rem;
+      border-radius: 0.45rem;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-size: 0.92em;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--toc);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(18px);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .profile {
+      display: grid;
+      gap: 14px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 18px 42px rgba(65, 0, 144, 0.24);
+    }
+
+    .profile h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      line-height: 1.05;
+      letter-spacing: -0.045em;
+    }
+
+    .profile p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav a {
+      position: relative;
+      padding: 10px 12px;
+      border-radius: 14px;
+      color: var(--muted);
+      font-weight: 750;
+      font-size: 0.95rem;
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .nav a:hover,
+    .nav a[aria-current="page"] {
+      background: var(--brand-soft);
+      color: var(--brand);
+      transform: translateX(2px);
+    }
+
+    .nav a[aria-current="page"]::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      top: 50%;
+      width: 4px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--brand);
+      transform: translateY(-50%);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 11px 14px;
+      border-radius: 14px;
+      font-weight: 850;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--brand);
+      box-shadow: 0 10px 30px rgba(65, 0, 144, 0.06);
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 44px rgba(65, 0, 144, 0.12);
+    }
+
+    .button.primary {
+      color: #fff;
+      border-color: var(--brand);
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    }
+
+    .content {
+      width: min(100%, var(--max-content));
+      padding: 28px clamp(22px, 4vw, 56px) 62px;
+      margin-inline: auto;
+      min-width: 0;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin: -28px calc(clamp(22px, 4vw, 56px) * -1) 42px;
+      padding: 0 clamp(22px, 4vw, 56px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 244, 255, 0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .crumb {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 750;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--brand-mid);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--brand);
+      font-size: 0.86rem;
+      font-weight: 850;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--brand);
+      box-shadow: 0 0 0 6px rgba(65, 0, 144, 0.10);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(28px, 4vw, 46px);
+      margin-bottom: 24px;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(65, 0, 144, 0.16), transparent 34%),
+        radial-gradient(circle at 92% 20%, rgba(111, 50, 201, 0.12), transparent 34%),
+        rgba(255, 255, 255, 0.78);
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      bottom: -120px;
+      width: 320px;
+      height: 320px;
+      border-radius: 42% 58% 65% 35% / 38% 42% 58% 62%;
+      border: 1px solid rgba(65, 0, 144, 0.14);
+      background:
+        linear-gradient(135deg, rgba(65, 0, 144, 0.12), rgba(255, 255, 255, 0.10)),
+        repeating-linear-gradient(90deg, rgba(65, 0, 144, 0.08) 0 1px, transparent 1px 20px);
+      transform: rotate(-18deg);
+    }
+
+    .hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      border: 1px solid var(--brand-mid);
+      font-size: 0.85rem;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    h2, h3, h4 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: -0.055em;
+    }
+
+    h2 {
+      max-width: 780px;
+      margin-top: 18px;
+      font-size: clamp(2.8rem, 7vw, 5.8rem);
+      background: linear-gradient(135deg, var(--brand), #20152f 58%, var(--brand-2));
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    h3 {
+      font-size: clamp(1.75rem, 3vw, 2.55rem);
+      margin-bottom: 10px;
+    }
+
+    h4 {
+      font-size: 1.12rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 5px;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.35vw, 1.14rem);
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .quick-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--brand);
+      font-weight: 850;
+      box-shadow: 0 12px 28px rgba(65, 0, 144, 0.06);
+    }
+
+    .card {
+      padding: clamp(22px, 3vw, 32px);
+      margin-bottom: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .meta {
+      color: var(--brand);
+      font-size: 0.76rem;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      margin-bottom: 12px;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .step:hover {
+      transform: translateY(-2px);
+      border-color: var(--brand-mid);
+      box-shadow: 0 16px 36px rgba(65, 0, 144, 0.10);
+    }
+
+    .step::before {
+      content: counter(step);
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: #fff;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 12px 28px rgba(65, 0, 144, 0.18);
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .inline-link {
+      color: var(--brand);
+      font-weight: 850;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+      text-decoration-color: rgba(65, 0, 144, 0.22);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .tile {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      min-height: 156px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58)),
+        var(--surface-strong);
+      box-shadow: 0 14px 34px rgba(65, 0, 144, 0.06);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    a.tile:hover {
+      transform: translateY(-3px);
+      border-color: var(--brand-mid);
+      box-shadow: 0 20px 46px rgba(65, 0, 144, 0.12);
+    }
+
+    .tile::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      opacity: 0.88;
+    }
+
+    .tile strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.06rem;
+      letter-spacing: -0.025em;
+    }
+
+    .tile p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .project-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 22px 0 0;
+    }
+
+    .stat {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--brand);
+      font-size: 1.05rem;
+      line-height: 1.1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 96px 22px 28px;
+      border-left: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.42);
+      color: var(--muted);
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 14px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .toc a {
+      display: block;
+      padding: 7px 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .toc a:hover { color: var(--brand); }
+
+    footer {
+      padding: 22px 0 4px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+      .toc { display: none; }
+    }
+
+    @media (max-width: 860px) {
+      .layout { display: block; }
+
+      .sidebar {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sidebar-footer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      .content { padding: 24px 16px 48px; }
+
+      .topbar {
+        margin: -24px -16px 28px;
+        padding: 0 16px;
+      }
+
+      .grid,
+      .grid.three,
+      .project-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .hero { border-radius: 24px; }
+      .hero::after { opacity: 0.35; }
+    }
+
+    @media (max-width: 560px) {
+      .nav,
+      .sidebar-footer {
+        grid-template-columns: 1fr;
+      }
+
+      .step { grid-template-columns: 1fr; }
+      .status-pill { display: none; }
+
+      h2 {
+        font-size: clamp(2.4rem, 14vw, 4rem);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="profile">
+        <div class="avatar">R</div>
+        <div>
+          <h1>Raiju Wiki</h1>
+          <p>Curated documentation for the Vulkan renderer.</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a href="../../index.html">Product page</a>
+        <a href="index.html" aria-current="page">Wiki home</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="rendering-loop.html">Rendering loop</a>
+        <a href="assets-shaders.html">Assets and shaders</a>
+        <a href="api-map.html">API map</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a class="button primary" href="api-map.html">Open API map</a>
+        <a class="button" href="https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div class="crumb">Home / Wiki / Overview</div>
+        <div class="status-pill"><span class="status-dot"></span>Milestone 2 docs</div>
+      </div>
+
+      <section class="hero" id="overview">
+        <span class="eyebrow">Documentation layer</span>
+        <h2>Raiju Renderer Wiki</h2>
+        <p class="lead">
+          A human-readable guide for the Raiju Renderer codebase. Start here to understand
+          the renderer workflow, then jump into the exact classes, files, and generated API
+          pages when you need implementation detail.
+        </p>
+
+        <div class="quick-links">
+          <a class="quick-link" href="getting-started.html">Start building</a>
+          <a class="quick-link" href="architecture.html">View architecture</a>
+          <a class="quick-link" href="rendering-loop.html">Trace one frame</a>
+          <a class="quick-link" href="api-map.html">Open API map</a>
+        </div>
+
+        <div class="project-stats" aria-label="Project highlights">
+          <div class="stat"><strong>Vulkan 1.3</strong><span>Explicit rendering API</span></div>
+          <div class="stat"><strong>C++20</strong><span>Renderer implementation</span></div>
+          <div class="stat"><strong>Dynamic Rendering</strong><span>Main colour/depth pass</span></div>
+          <div class="stat"><strong>Milestone 2</strong><span>Textured OBJ vertical slice</span></div>
+        </div>
+      </section>
+
+      <article class="card" id="how-to-use">
+        <div class="meta">How to use this wiki</div>
+        <h3>Start broad, then drill into the API</h3>
+        <div class="steps">
+          <div class="step">
+            <div>
+              <h4>Read the project path</h4>
+              <p>
+                Use <a class="inline-link" href="getting-started.html">Getting started</a>
+                to install dependencies, configure CMake, build the renderer, and run
+                the executable from the correct output directory.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h4>Understand the module boundaries</h4>
+              <p>
+                Use <a class="inline-link" href="architecture.html">Architecture</a>
+                to see which system owns Vulkan setup, swapchain images, command
+                submission, pipelines, mesh buffers, textures, and the debug UI.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h4>Follow one frame</h4>
+              <p>
+                Use <a class="inline-link" href="rendering-loop.html">Rendering loop</a>
+                to trace acquire, command recording, Dynamic Rendering, image barriers,
+                submit, present, and resize recovery.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h4>Open the API reference</h4>
+              <p>
+                Use <a class="inline-link" href="api-map.html">API map</a>
+                when you know the subsystem and want the exact class, file, member list,
+                or source-browser page in the generated API reference.
+              </p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="pages">
+        <div class="meta">Wiki pages</div>
+        <h3>Documentation index</h3>
+        <div class="grid three">
+          <a class="tile" href="getting-started.html">
+            <strong>Getting started</strong>
+            <p>Requirements, build presets, run paths, validation layers, and first checks.</p>
+          </a>
+          <a class="tile" href="architecture.html">
+            <strong>Architecture</strong>
+            <p>Responsibility breakdown for the renderer's main systems and ownership boundaries.</p>
+          </a>
+          <a class="tile" href="rendering-loop.html">
+            <strong>Rendering loop</strong>
+            <p>The complete frame lifecycle from fence wait to presentation and swapchain rebuild.</p>
+          </a>
+          <a class="tile" href="assets-shaders.html">
+            <strong>Assets and shaders</strong>
+            <p>OBJ import, texture loading, shader compilation, descriptor binding, and debug views.</p>
+          </a>
+          <a class="tile" href="api-map.html">
+            <strong>API map</strong>
+            <p>Curated links into generated classes, structs, namespaces, source files, and globals.</p>
+          </a>
+          <a class="tile" href="troubleshooting.html">
+            <strong>Troubleshooting</strong>
+            <p>Common build, runtime, Vulkan loader, asset path, shader, and resize issues.</p>
+          </a>
+        </div>
+      </article>
+
+      <article class="card" id="project-summary">
+        <div class="meta">Project summary</div>
+        <h3>What Raiju Renderer currently does</h3>
+        <div class="grid">
+          <div class="tile">
+            <strong>Renderer scope</strong>
+            <p>
+              A compact C++20 Vulkan 1.3 renderer focused on explicit GPU setup,
+              Dynamic Rendering, swapchain management, resource upload, command recording,
+              synchronisation, and presentation.
+            </p>
+          </div>
+          <div class="tile">
+            <strong>Current milestone</strong>
+            <p>
+              Milestone 2 vertical slice: textured OBJ rendering, depth testing, ImGui
+              debug controls, wireframe pipeline variant, normals view, culling toggle,
+              and resize-safe swapchain recreation.
+            </p>
+          </div>
+          <div class="tile">
+            <strong>Core API choice</strong>
+            <p>
+              Uses Vulkan 1.3 Dynamic Rendering instead of legacy <code>VkRenderPass</code>
+              and <code>VkFramebuffer</code> objects for the main colour/depth pass.
+            </p>
+          </div>
+          <div class="tile">
+            <strong>Generated docs</strong>
+            <p>
+              The API reference is generated from <code>README.md</code>, <code>src/</code>,
+              and <code>docs/dev-log/</code>, so exact types and functions sit beside this wiki.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <footer>
+        Raiju Renderer wiki. Use these pages together with the codebase and API map
+        when you need exact engine details.
+      </footer>
+    </main>
+
+    <aside class="toc">
+      <strong>On this page</strong>
+      <a href="#overview">Overview</a>
+      <a href="#how-to-use">How to use</a>
+      <a href="#pages">Pages</a>
+      <a href="#project-summary">Project summary</a>
+    </aside>
+  </div>
+</body>
+</html>
