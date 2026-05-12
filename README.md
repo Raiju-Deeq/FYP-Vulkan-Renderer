@@ -6,8 +6,8 @@
 
 [View the Raiju Renderer product page](https://raiju-deeq.github.io/FYP-Vulkan-Renderer/)
 
-**Release State:** Prototype / Final Year Project  
-**Renderer Version:** Milestone 2 vertical slice  
+**Release State:** v0.1.0 Prototype / Final Year Project
+**Renderer Version:** Textured OBJ vertical slice
 **Graphics API:** Vulkan 1.3  
 **Language:** C++20  
 **Platforms:** Linux and Windows
@@ -326,7 +326,7 @@ FYP-Vulkan-Renderer/
 └── docs/
     ├── dev-log/
     ├── prototype-evidence/
-    └── renderdoc-captures/
+    └── wiki/
 ```
 
 ### Core Systems
@@ -399,7 +399,7 @@ If you are reading the code for the first time, start here:
 2. `src/application.cpp`  
    High-level lifecycle, debug UI, asset selection, and render-loop coordination.
 
-3. `src/renderer.cpp` or `src/frame_data.cpp`  
+3. `src/frame_data.cpp`
    Frame synchronisation and command submission logic.
 
 4. `src/graphics_pipeline.cpp`  
@@ -490,7 +490,6 @@ If larger third-party assets are added later, this section should list:
 
 **Programme:** BSc (Hons) Games Production, De Montfort University, Leicester  
 **Author:** Mohamed Deeq Mohamed  
-**Student ID:** P2884884  
 **Supervisor:** Salim Hasshu  
 **Focus:** Vulkan rendering fundamentals, explicit GPU programming, technical reflection, and future neural rendering research
 
