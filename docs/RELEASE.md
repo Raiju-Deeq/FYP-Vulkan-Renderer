@@ -22,7 +22,18 @@ git push origin main
 git push origin v0.1.0
 ```
 
-The `release.yml` workflow will create a GitHub Release from the tag and attach a source archive.
+The `release.yml` workflow will create a GitHub Release from the tag and attach:
+
+- `FYP-Vulkan-Renderer-v0.1.0-source.zip`
+- `Raiju-Renderer-v0.1.0-windows-x64.zip`
+
+The Windows zip contains the executable, runtime DLLs, assets, shaders, README, and license.
+
+## Updating an Existing Release
+
+If the release already exists, push this workflow update to `main`, then run **GitHub Release** manually from the Actions tab using the existing tag, for example `v0.1.0`.
+
+The workflow will rebuild the Windows package and upload it to the existing release with `--clobber`.
 
 ## Release Notes Template
 

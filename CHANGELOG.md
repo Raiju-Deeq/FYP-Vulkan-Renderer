@@ -22,5 +22,5 @@ Initial public prototype release of Raiju Renderer.
 
 - Prototype scope: this is not a full engine or packaged end-user application.
 - Runtime requires a Vulkan 1.3 capable GPU/driver and local build dependencies.
-- Binary releases are not bundled yet; release archives are source packages.
+- Windows binary packages are provided for releases; Linux users should build from source.
 - Mipmaps, anisotropic filtering, PBR materials, scene loading, shadows, and Gaussian splatting remain future work.
