@@ -26,14 +26,16 @@ The `release.yml` workflow will create a GitHub Release from the tag and attach:
 
 - `FYP-Vulkan-Renderer-v0.1.0-source.zip`
 - `Raiju-Renderer-v0.1.0-windows-x64.zip`
+- `Raiju-Renderer-v0.1.0-linux-x64.tar.gz`
 
 The Windows zip contains the executable, runtime DLLs, assets, shaders, README, and license.
+The Linux tarball contains the executable, assets, shaders, README, and license.
 
 ## Updating an Existing Release
 
 If the release already exists, push this workflow update to `main`, then run **GitHub Release** manually from the Actions tab using the existing tag, for example `v0.1.0`.
 
-The workflow will rebuild the Windows package and upload it to the existing release with `--clobber`.
+The workflow will rebuild the Windows and Linux packages and upload them to the existing release with `--clobber`.
 
 ## Release Notes Template
 
@@ -59,5 +61,5 @@ Initial public prototype release of the Vulkan renderer.
 
 ### Notes
 
-This is a source release for a Final Year Project prototype. Build from source using the instructions in `README.md`.
+This is a prototype release for a Final Year Project. Windows and Linux binary packages are provided, and the project can still be built from source using the instructions in `README.md`.
 ```

@@ -19,7 +19,7 @@ env:
 
 jobs:
   release:
-    name: Build and Publish Release
+    name: Build and Publish Windows Release
     runs-on: windows-latest
 
     steps:
@@ -103,3 +103,97 @@ jobs:
               --title "Raiju Renderer ${env:RELEASE_TAG}" `
               --notes-file CHANGELOG.md
           }
+
+  release-linux:
+    name: Build and Upload Linux Release
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+
+          grep -q "project(vulkan-renderer VERSION ${version}" CMakeLists.txt
+          grep -q "\"version\": \"${version}\"" vcpkg.json
+          grep -q "## v${version}" CHANGELOG.md
+
+      - name: Install Vulkan SDK and system dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc > /dev/null
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list \
+            https://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
+
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            vulkan-sdk \
+            libgl-dev \
+            libx11-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            ninja-build
+
+          glslc --version
+          echo "VULKAN_SDK=/usr" >> "$GITHUB_ENV"
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -B build/release \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DVULKAN_SDK=/usr \
+            -DBUILD_DOCS=OFF
+
+      - name: Build Linux release
+        shell: bash
+        run: cmake --build build/release --parallel
+
+      - name: Package Linux binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_root="Raiju-Renderer-${RELEASE_TAG}-linux-x64"
+
+          mkdir -p "$package_root"
+          cp "build/release/vulkan-renderer" "$package_root/"
+          cp -r "build/release/assets" "$package_root/"
+          cp -r "build/release/shaders" "$package_root/"
+          cp "README.md" "$package_root/"
+          cp "LICENSE" "$package_root/"
+
+          tar -czf "${package_root}.tar.gz" "$package_root"
+
+      - name: Upload Linux release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          linux_tar="Raiju-Renderer-${RELEASE_TAG}-linux-x64.tar.gz"
+          gh release upload "$RELEASE_TAG" "$linux_tar" --clobber
