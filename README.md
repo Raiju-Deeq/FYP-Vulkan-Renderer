@@ -38,6 +38,12 @@ The project is currently developed as my Final Year Project at De Montfort Unive
   <em>Milestone 2: textured OBJ model rendered with vertex/index buffers, texture sampling, depth testing, and debug UI.</em>
 </p>
 
+<p align="center">
+  <img src="docs/prototype-evidence/MilestoneUpdate.png" alt="Updated renderer milestone view with runtime controls" width="780"/>
+  <br/>
+  <em>Milestone update: current renderer state showing the textured model workflow with the live ImGui inspection controls.</em>
+</p>
+
 ---
 
 ## Purpose
