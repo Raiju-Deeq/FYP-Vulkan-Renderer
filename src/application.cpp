@@ -105,8 +105,12 @@ namespace
  */
 enum class AssetBrowserTarget
 {
-    Model,   ///< OBJ mesh file.
-    Texture  ///< Image file for the material albedo texture.
+    Model,              ///< OBJ mesh file.
+    BaseColorTexture,   ///< Main visible colour texture.
+    NormalTexture,      ///< Optional tangent-space normal map.
+    MetallicRoughnessTexture, ///< Optional packed map: G = roughness, B = metallic.
+    AmbientOcclusionTexture,  ///< Optional AO map.
+    EmissiveTexture     ///< Optional emissive colour map.
 };
 
 /**
@@ -182,7 +186,68 @@ std::vector<std::string> allowedExtensions(AssetBrowserTarget target)
  */
 const char* assetBrowserTitle(AssetBrowserTarget target)
 {
-    return target == AssetBrowserTarget::Model ? "Find model" : "Find texture";
+    switch (target) {
+    case AssetBrowserTarget::Model:
+        return "Find model";
+    case AssetBrowserTarget::BaseColorTexture:
+        return "Find base color";
+    case AssetBrowserTarget::NormalTexture:
+        return "Find normal map";
+    case AssetBrowserTarget::MetallicRoughnessTexture:
+        return "Find metallic roughness";
+    case AssetBrowserTarget::AmbientOcclusionTexture:
+        return "Find AO map";
+    case AssetBrowserTarget::EmissiveTexture:
+        return "Find emissive map";
+    }
+    return "Find texture";
+}
+
+/**
+ * @brief Returns true when the browser target is one of the material texture slots.
+ * @param target Browser target selected by the UI.
+ * @return false only for OBJ model selection.
+ */
+bool isTextureTarget(AssetBrowserTarget target)
+{
+    return target != AssetBrowserTarget::Model;
+}
+
+/**
+ * @brief Stores a newly loaded texture in the matching PBR material slot.
+ *
+ * The base-colour slot is required, so it is stored directly.  The other slots
+ * are optional: if I never load them, Material::init() supplies a neutral 1x1
+ * fallback.  This keeps "OBJ + one PNG" as the minimum working path while still
+ * letting me load full PBR texture sets when I have them.
+ *
+ * @param textures Texture set to update.
+ * @param target Texture browser target chosen by the user.
+ * @param texture Loaded CPU-side texture data.
+ */
+void assignTextureToSlot(PbrTextureSet& textures,
+                         AssetBrowserTarget target,
+                         LoadedTexture&& texture)
+{
+    switch (target) {
+    case AssetBrowserTarget::BaseColorTexture:
+        textures.baseColor = std::move(texture);
+        break;
+    case AssetBrowserTarget::NormalTexture:
+        textures.normal = std::move(texture);
+        break;
+    case AssetBrowserTarget::MetallicRoughnessTexture:
+        textures.metallicRoughness = std::move(texture);
+        break;
+    case AssetBrowserTarget::AmbientOcclusionTexture:
+        textures.ambientOcclusion = std::move(texture);
+        break;
+    case AssetBrowserTarget::EmissiveTexture:
+        textures.emissive = std::move(texture);
+        break;
+    case AssetBrowserTarget::Model:
+        break;
+    }
 }
 
 /**
@@ -443,8 +508,8 @@ int Application::run()
         return EXIT_FAILURE;
     }
 
-    LoadedTexture loadedTexture{};
-    if (!loadRgba8Texture(TEXTURE_PATH, loadedTexture)) {
+    PbrTextureSet materialTextures{};
+    if (!loadRgba8Texture(TEXTURE_PATH, materialTextures.baseColor)) {
         mesh.destroy(ctx);
         destroyMeshPipelines(ctx, pipelines);
         swap.destroy(ctx);
@@ -454,7 +519,7 @@ int Application::run()
     }
 
     Material material;
-    if (!material.init(ctx, loadedTexture, pipelines.solid.descriptorSetLayout())) {
+    if (!material.init(ctx, materialTextures, pipelines.solid.descriptorSetLayout())) {
         mesh.destroy(ctx);
         destroyMeshPipelines(ctx, pipelines);
         swap.destroy(ctx);
@@ -499,7 +564,11 @@ int Application::run()
     auto lastFrameTime  = std::chrono::high_resolution_clock::now();
     const auto appStartTime = lastFrameTime;
     std::filesystem::path currentModelPath{MODEL_PATH};
-    std::filesystem::path currentTexturePath{TEXTURE_PATH};
+    std::filesystem::path currentBaseColorPath{TEXTURE_PATH};
+    std::optional<std::filesystem::path> currentNormalPath;
+    std::optional<std::filesystem::path> currentMetallicRoughnessPath;
+    std::optional<std::filesystem::path> currentAmbientOcclusionPath;
+    std::optional<std::filesystem::path> currentEmissivePath;
     AssetBrowserState assetBrowser{};
 
     // S2 debug controls. These are independent on purpose:
@@ -509,6 +578,8 @@ int Application::run()
     bool showWireframe = false;
     bool useBackfaceCulling = true;
     bool showNormals = false;
+    PbrMaterialParams pbrParams{};
+    PbrLightParams lightParams{};
     float cameraDistance = CAMERA_START_DISTANCE;
 
     // ── Render loop ───────────────────────────────────────────────────────
@@ -584,16 +655,61 @@ int Application::run()
         ImGui::Checkbox("Normals view", &showNormals);
         ImGui::Separator();
 
+        // C2: PBR controls.  This is direct Cook-Torrance lighting with
+        // Disney-style material inputs.  Metallic, roughness, AO and emissive
+        // now come from their maps when I load them; missing maps use neutral
+        // fallback textures so the base-colour-only path still works.
+        ImGui::Text("PBR material");
+        ImGui::ColorEdit3("Base color", &pbrParams.baseColorFactor.x);
+        ImGui::Separator();
+
+        ImGui::Text("Direct light");
+        ImGui::SliderFloat3("Direction", &lightParams.direction.x, -1.0f, 1.0f, "%.2f");
+        ImGui::SliderFloat("Intensity", &lightParams.intensity, 0.0f, 10.0f, "%.2f");
+        ImGui::Separator();
+
         ImGui::Text("Assets");
         if (ImGui::Button("Find model")) {
             openAssetBrowser(assetBrowser, AssetBrowserTarget::Model, currentModelPath);
         }
         ImGui::TextWrapped("%s", currentModelPath.string().c_str());
 
-        if (ImGui::Button("Find texture")) {
-            openAssetBrowser(assetBrowser, AssetBrowserTarget::Texture, currentTexturePath);
+        if (ImGui::Button("Find base color")) {
+            openAssetBrowser(assetBrowser, AssetBrowserTarget::BaseColorTexture, currentBaseColorPath);
         }
-        ImGui::TextWrapped("%s", currentTexturePath.string().c_str());
+        ImGui::TextWrapped("%s", currentBaseColorPath.string().c_str());
+
+        const auto drawOptionalTextureSlot =
+            [&](const char* buttonLabel,
+                AssetBrowserTarget target,
+                const std::optional<std::filesystem::path>& currentPath,
+                const char* fallbackLabel) {
+                if (ImGui::Button(buttonLabel)) {
+                    openAssetBrowser(assetBrowser, target, currentPath.value_or(currentBaseColorPath));
+                }
+
+                const std::string label = currentPath.has_value()
+                    ? currentPath->string()
+                    : fallbackLabel;
+                ImGui::TextWrapped("%s", label.c_str());
+            };
+
+        drawOptionalTextureSlot("Find normal",
+                                AssetBrowserTarget::NormalTexture,
+                                currentNormalPath,
+                                "<using vertex normals>");
+        drawOptionalTextureSlot("Find metallic roughness",
+                                AssetBrowserTarget::MetallicRoughnessTexture,
+                                currentMetallicRoughnessPath,
+                                "<default rough non-metal>");
+        drawOptionalTextureSlot("Find AO",
+                                AssetBrowserTarget::AmbientOcclusionTexture,
+                                currentAmbientOcclusionPath,
+                                "<default white AO>");
+        drawOptionalTextureSlot("Find emissive",
+                                AssetBrowserTarget::EmissiveTexture,
+                                currentEmissivePath,
+                                "<default emissive>");
         ImGui::End();
 
         const std::optional<AssetSelection> selectedAsset = drawAssetBrowser(assetBrowser);
@@ -611,13 +727,37 @@ int Application::run()
                         currentModelPath = selectedPath;
                     }
                 }
-            } else {
+            } else if (isTextureTarget(selectedAsset->target)) {
                 LoadedTexture replacementTexture{};
                 if (loadRgba8Texture(selectedPath.string(), replacementTexture)) {
+                    PbrTextureSet replacementTextures = materialTextures;
+                    assignTextureToSlot(replacementTextures,
+                                        selectedAsset->target,
+                                        std::move(replacementTexture));
+
                     renderer.waitIdle(ctx);
-                    if (material.init(ctx, replacementTexture, pipelines.solid.descriptorSetLayout())) {
-                        loadedTexture = std::move(replacementTexture);
-                        currentTexturePath = selectedPath;
+                    if (material.init(ctx, replacementTextures, pipelines.solid.descriptorSetLayout())) {
+                        materialTextures = std::move(replacementTextures);
+
+                        switch (selectedAsset->target) {
+                        case AssetBrowserTarget::BaseColorTexture:
+                            currentBaseColorPath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::NormalTexture:
+                            currentNormalPath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::MetallicRoughnessTexture:
+                            currentMetallicRoughnessPath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::AmbientOcclusionTexture:
+                            currentAmbientOcclusionPath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::EmissiveTexture:
+                            currentEmissivePath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::Model:
+                            break;
+                        }
                     }
                 }
             }
@@ -654,7 +794,8 @@ int Application::run()
         const DebugViewMode debugViewMode = showNormals ? DebugViewMode::Normals
                                                         : DebugViewMode::Lit;
 
-        if (!renderer.drawFrame(ctx, swap, activePipeline, mesh, material, mvp, debugViewMode)) {
+        if (!renderer.drawFrame(ctx, swap, activePipeline, mesh, material,
+                                mvp, debugViewMode, pbrParams, lightParams)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
             // I must wait for all in-flight GPU work to finish before
@@ -694,7 +835,7 @@ int Application::run()
                 spdlog::error("Application: mesh pipeline rebuild failed; exiting");
                 break;
             }
-            if (!material.init(ctx, loadedTexture, pipelines.solid.descriptorSetLayout())) {
+            if (!material.init(ctx, materialTextures, pipelines.solid.descriptorSetLayout())) {
                 spdlog::error("Application: material rebuild failed; exiting");
                 break;
             }

@@ -1,6 +1,6 @@
 /**
  * @file texture.cpp
- * @brief Descriptor and sampler setup for the M2 textured mesh.
+ * @brief Descriptor and sampler setup for the PBR textured mesh.
  */
 
 #include "texture.hpp"
@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -17,6 +18,8 @@
 
 namespace
 {
+using TextureResourceArray = std::array<GpuBuffer::ImageResource, PBR_TEXTURE_SLOT_COUNT>;
+
 bool loadAsciiPpm(const std::string& path, LoadedTexture& outTexture)
 {
     // This fallback lets me keep using tiny generated prototype textures even
@@ -65,6 +68,107 @@ bool loadAsciiPpm(const std::string& path, LoadedTexture& outTexture)
     outTexture.path = path;
     return true;
 }
+
+/**
+ * @brief Creates a tiny fallback texture for an optional PBR map.
+ *
+ * This is what keeps the material path usable with only an OBJ and one base
+ * colour PNG.  Every descriptor binding still receives a valid image, but the
+ * fallback value is neutral:
+ * - normal = flat normal colour (reserved until tangent-space normals exist);
+ * - metallic/roughness = G=255 rough, B=0 non-metal;
+ * - AO = white, so it does not darken the material;
+ * - emissive = black, so it contributes no light unless I load an emissive map.
+ *
+ * @param rgba Four RGBA8 bytes used for the single texel.
+ * @param label Debug path label shown in logs/RenderDoc.
+ * @return LoadedTexture containing one RGBA texel.
+ */
+LoadedTexture makeFallbackTexture(const std::array<uint8_t, 4>& rgba,
+                                  const std::string& label)
+{
+    LoadedTexture texture{};
+    texture.pixels.assign(rgba.begin(), rgba.end());
+    texture.width = 1;
+    texture.height = 1;
+    texture.channels = 4;
+    texture.path = label;
+    return texture;
+}
+
+/**
+ * @brief Selects the real texture for a PBR slot or creates its neutral fallback.
+ *
+ * The returned reference is used immediately by Material::init() while
+ * `fallback` is still alive in the caller's scope.  I use this pattern so I do
+ * not have to permanently store fallback CPU textures in PbrTextureSet; they
+ * only exist long enough to be uploaded into Vulkan images.
+ *
+ * @param textures CPU-side material texture set.
+ * @param slot Material slot being uploaded.
+ * @param fallback Temporary texture used when the slot is missing.
+ * @return Texture data to upload for this slot.
+ */
+const LoadedTexture& textureForSlot(const PbrTextureSet& textures,
+                                    PbrTextureSlot slot,
+                                    LoadedTexture& fallback)
+{
+    switch (slot) {
+    case PbrTextureSlot::BaseColor:
+        return textures.baseColor;
+    case PbrTextureSlot::Normal:
+        if (textures.normal.has_value()) return textures.normal.value();
+        fallback = makeFallbackTexture({128, 128, 255, 255}, "<default-flat-normal>");
+        return fallback;
+    case PbrTextureSlot::MetallicRoughness:
+        if (textures.metallicRoughness.has_value()) return textures.metallicRoughness.value();
+        fallback = makeFallbackTexture({255, 255, 0, 255}, "<default-metallic-roughness>");
+        return fallback;
+    case PbrTextureSlot::AmbientOcclusion:
+        if (textures.ambientOcclusion.has_value()) return textures.ambientOcclusion.value();
+        fallback = makeFallbackTexture({255, 255, 255, 255}, "<default-ao>");
+        return fallback;
+    case PbrTextureSlot::Emissive:
+        if (textures.emissive.has_value()) return textures.emissive.value();
+        fallback = makeFallbackTexture({0, 0, 0, 255}, "<default-emissive>");
+        return fallback;
+    }
+
+    return textures.baseColor;
+}
+
+/**
+ * @brief Chooses the Vulkan image format for a PBR texture slot.
+ *
+ * Colour textures must be sampled through sRGB conversion because their bytes
+ * represent display colour.  Data textures must not be gamma-corrected, because
+ * values like roughness and metallic are numeric material parameters.
+ *
+ * @param slot Material texture slot.
+ * @return Vulkan format used when creating the image.
+ */
+VkFormat formatForSlot(PbrTextureSlot slot)
+{
+    // Colour maps are sRGB because their values represent visible colour.
+    // Data maps are UNORM because values like roughness, metallic, AO and
+    // normal vectors must be sampled linearly without gamma conversion.
+    if (slot == PbrTextureSlot::BaseColor || slot == PbrTextureSlot::Emissive) {
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    }
+    return VK_FORMAT_R8G8B8A8_UNORM;
+}
+
+/**
+ * @brief Destroys every image in a temporary or owned material texture array.
+ * @param ctx Vulkan context that owns the VMA allocator and VkDevice.
+ * @param resources Texture resources to destroy/reset.
+ */
+void destroyTextureArray(const VulkanContext& ctx, TextureResourceArray& resources)
+{
+    for (GpuBuffer::ImageResource& resource : resources) {
+        GpuBuffer::destroyImage(ctx, resource);
+    }
+}
 } // namespace
 
 bool loadRgba8Texture(const std::string& path, LoadedTexture& outTexture)
@@ -73,8 +177,9 @@ bool loadRgba8Texture(const std::string& path, LoadedTexture& outTexture)
     int height = 0;
     int sourceChannels = 0;
 
-    // Force 4-channel RGBA8 output regardless of source format so the Vulkan
-    // upload path can use VK_FORMAT_R8G8B8A8_SRGB without per-texture branching.
+    // Force 4-channel RGBA8 output regardless of source format.  I keep the
+    // CPU byte layout identical for every texture, then choose the Vulkan image
+    // format later: sRGB for colour maps, UNORM for data maps.
     stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &sourceChannels, STBI_rgb_alpha);
     if (!pixels) {
         if (loadAsciiPpm(path, outTexture)) {
@@ -102,19 +207,29 @@ bool loadRgba8Texture(const std::string& path, LoadedTexture& outTexture)
 }
 
 bool Material::init(const VulkanContext&              ctx,
-                    const LoadedTexture& texture,
+                    const PbrTextureSet& textures,
                     VkDescriptorSetLayout             layout)
 {
     // Build replacement state in local variables first.  If any step fails,
     // the currently bound material still owns its previous valid GPU objects.
-    GpuBuffer::ImageResource newAlbedo{};
+    TextureResourceArray newTextures{};
     VkSampler newSampler = VK_NULL_HANDLE;
     VkDescriptorPool newDescriptorPool = VK_NULL_HANDLE;
     VkDescriptorSet newDescriptorSet = VK_NULL_HANDLE;
+    uint32_t maxMipLevels = 1;
 
-    if (!GpuBuffer::uploadTexture2D(ctx, texture, newAlbedo)) {
-        spdlog::error("Material: failed to upload albedo texture");
-        return false;
+    for (uint32_t i = 0; i < PBR_TEXTURE_SLOT_COUNT; ++i) {
+        const auto slot = static_cast<PbrTextureSlot>(i);
+        LoadedTexture fallback{};
+        const LoadedTexture& source = textureForSlot(textures, slot, fallback);
+
+        if (!GpuBuffer::uploadTexture2D(ctx, source, newTextures[i], formatForSlot(slot))) {
+            spdlog::error("Material: failed to upload PBR texture slot {} from '{}'",
+                          i, source.path);
+            destroyTextureArray(ctx, newTextures);
+            return false;
+        }
+        maxMipLevels = std::max(maxMipLevels, newTextures[i].mipLevels);
     }
 
     VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -123,20 +238,26 @@ bool Material::init(const VulkanContext&              ctx,
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    // Mipmapping is controlled from the sampler as well as the image.  The
+    // image view exposes every generated mip level, and this sampler tells the
+    // GPU it may pick from that full range when a textured triangle is far
+    // enough away on screen.  That reduces shimmering because the shader reads
+    // a pre-filtered smaller texture instead of over-sampling the full image.
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
+    samplerInfo.maxLod = static_cast<float>(maxMipLevels);
     samplerInfo.maxAnisotropy = 1.0f;
 
     if (vkCreateSampler(ctx.device(), &samplerInfo, nullptr, &newSampler) != VK_SUCCESS) {
         spdlog::error("Material: failed to create sampler");
-        GpuBuffer::destroyImage(ctx, newAlbedo);
+        destroyTextureArray(ctx, newTextures);
         return false;
     }
 
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = 1;
+    poolSize.descriptorCount = PBR_TEXTURE_SLOT_COUNT;
 
     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     poolInfo.maxSets = 1;
@@ -146,7 +267,7 @@ bool Material::init(const VulkanContext&              ctx,
     if (vkCreateDescriptorPool(ctx.device(), &poolInfo, nullptr, &newDescriptorPool) != VK_SUCCESS) {
         spdlog::error("Material: failed to create descriptor pool");
         vkDestroySampler(ctx.device(), newSampler, nullptr);
-        GpuBuffer::destroyImage(ctx, newAlbedo);
+        destroyTextureArray(ctx, newTextures);
         return false;
     }
 
@@ -159,34 +280,40 @@ bool Material::init(const VulkanContext&              ctx,
         spdlog::error("Material: failed to allocate descriptor set");
         vkDestroyDescriptorPool(ctx.device(), newDescriptorPool, nullptr);
         vkDestroySampler(ctx.device(), newSampler, nullptr);
-        GpuBuffer::destroyImage(ctx, newAlbedo);
+        destroyTextureArray(ctx, newTextures);
         return false;
     }
 
-    VkDescriptorImageInfo imageInfo{};
-    imageInfo.sampler = newSampler;
-    imageInfo.imageView = newAlbedo.view;
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    std::array<VkDescriptorImageInfo, PBR_TEXTURE_SLOT_COUNT> imageInfos{};
+    std::array<VkWriteDescriptorSet, PBR_TEXTURE_SLOT_COUNT> writes{};
+    for (uint32_t i = 0; i < PBR_TEXTURE_SLOT_COUNT; ++i) {
+        imageInfos[i].sampler = newSampler;
+        imageInfos[i].imageView = newTextures[i].view;
+        imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    // This descriptor is what connects set=0,binding=0 in mesh.frag to my
-    // uploaded image view and sampler.
-    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    write.dstSet = newDescriptorSet;
-    write.dstBinding = 0;
-    write.descriptorCount = 1;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    write.pImageInfo = &imageInfo;
+        // Binding numbers intentionally match PbrTextureSlot and mesh.frag.
+        writes[i] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        writes[i].dstSet = newDescriptorSet;
+        writes[i].dstBinding = i;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[i].pImageInfo = &imageInfos[i];
+    }
 
-    vkUpdateDescriptorSets(ctx.device(), 1, &write, 0, nullptr);
+    vkUpdateDescriptorSets(ctx.device(),
+                           static_cast<uint32_t>(writes.size()),
+                           writes.data(),
+                           0,
+                           nullptr);
 
     // Only replace the old material after the new texture state is complete.
     destroy(ctx);
-    m_albedo = newAlbedo;
+    m_textures = newTextures;
     m_sampler = newSampler;
     m_descriptorPool = newDescriptorPool;
     m_descriptorSet = newDescriptorSet;
 
-    spdlog::info("Material: descriptor set ready for '{}'", texture.path);
+    spdlog::info("Material: PBR descriptor set ready for '{}'", textures.baseColor.path);
     return true;
 }
 
@@ -205,7 +332,7 @@ void Material::destroy(const VulkanContext& ctx)
         m_sampler = VK_NULL_HANDLE;
     }
 
-    GpuBuffer::destroyImage(ctx, m_albedo);
+    destroyTextureArray(ctx, m_textures);
 }
 
 void Material::bindDescriptorSet(VkCommandBuffer  cmd,

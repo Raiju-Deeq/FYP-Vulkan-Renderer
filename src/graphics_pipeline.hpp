@@ -25,7 +25,8 @@
  * ## Mesh pipeline specifics
  *  - Vertex input matches the `Vertex` layout from mesh.hpp.
  *  - Descriptor set 0 binds the sampled material texture.
- *  - Push constants provide the model-view-projection matrix and debug mode.
+ *  - Push constants provide the model-view-projection matrix, material inputs,
+ *    light controls and debug mode.
  *  - Dynamic viewport + scissor keep resize handling simple.
  *
  * @author Mohamed Deeq Mohamed (P2884884)
@@ -63,14 +64,53 @@ enum class DebugViewMode : int32_t
  * @brief Per-draw data shared by the mesh vertex and fragment shaders.
  *
  * This keeps the debug toggle lightweight.  I push one small block each draw:
- * the vertex shader reads `mvp`, and the fragment shader reads `debugMode`.
- * That means the ImGui checkbox can change the debug view without rebuilding
- * descriptor sets or buffers.
+ * the vertex shader reads `mvp`, and the fragment shader reads the material,
+ * light and debug values.  I pack the non-matrix data into `vec4`-sized groups
+ * so the C++ layout matches the GLSL push-constant layout cleanly.
  */
 struct DrawPushConstants
 {
-    glm::mat4 mvp{1.0f};      ///< Model-view-projection matrix.
-    int32_t   debugMode = 0;  ///< Matches DebugViewMode in mesh.frag.
+    glm::mat4 mvp{1.0f}; ///< Model-view-projection matrix.
+
+    /// RGB = base-colour factor, A unused for now.
+    glm::vec4 baseColorFactor{1.0f, 1.0f, 1.0f, 0.0f};
+
+    /// X = debug mode, YZW unused for now.
+    glm::vec4 debugOptions{0.0f, 0.0f, 0.0f, 0.0f};
+
+    /// XYZ = directional light direction, W = direct light intensity.
+    glm::vec4 lightDirectionIntensity{0.4f, 0.8f, 0.6f, 3.0f};
+};
+
+/**
+ * @struct PbrMaterialParams
+ * @brief Runtime material controls used by the basic Cook-Torrance shader.
+ *
+ * This mirrors the usual Disney-style material inputs without requiring a full
+ * texture-stack yet:
+ * - baseColor comes from the base-colour texture multiplied by `baseColorFactor`.
+ * - metallic and roughness come from the optional metallic/roughness map.
+ * - normal currently means the imported vertex normal; normal maps need
+ *   tangents/bitangents before the uploaded normal map can affect shading.
+ * - ambientOcclusion and emissive come from their optional maps.
+ */
+struct PbrMaterialParams
+{
+    glm::vec3 baseColorFactor{1.0f, 1.0f, 1.0f}; ///< Multiplies the sampled base-colour texture.
+};
+
+/**
+ * @struct PbrLightParams
+ * @brief Movable direct light controls for the Cook-Torrance shader.
+ *
+ * This is still direct lighting, not image-based lighting.  I expose the light
+ * direction and intensity so I can demonstrate how the BRDF responds when the
+ * light source moves around the model.
+ */
+struct PbrLightParams
+{
+    glm::vec3 direction{0.4f, 0.8f, 0.6f}; ///< Direction from the surface toward the light.
+    float intensity = 3.0f;                ///< Direct light radiance multiplier.
 };
 
 /**

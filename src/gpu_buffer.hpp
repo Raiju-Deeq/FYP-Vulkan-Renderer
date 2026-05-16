@@ -29,7 +29,7 @@ struct BufferResource
 
 /**
  * @struct ImageResource
- * @brief VkImage plus allocation and view for a sampled 2D texture.
+ * @brief VkImage plus allocation, view and mip metadata for a sampled 2D texture.
  */
 struct ImageResource
 {
@@ -38,6 +38,7 @@ struct ImageResource
     VkImageView   view = VK_NULL_HANDLE;
     VkFormat      format = VK_FORMAT_UNDEFINED;
     VkExtent3D    extent = {0, 0, 1};
+    uint32_t      mipLevels = 1;
 };
 
 /**
@@ -57,14 +58,21 @@ bool uploadBuffer(const VulkanContext& ctx,
                   BufferResource&      outBuffer);
 
 /**
- * @brief Uploads an RGBA8 texture into a sampled device-local image.
+ * @brief Uploads RGBA8 pixels into a sampled device-local image.
  *
- * Creates the image, stages the pixels, transitions layouts, copies the pixel
- * data, transitions to `SHADER_READ_ONLY_OPTIMAL`, and creates an image view.
+ * Creates the image, stages the base pixels into mip level 0, generates the
+ * remaining mip levels with GPU blits, transitions the whole mip chain to
+ * `SHADER_READ_ONLY_OPTIMAL`, and creates an image view that exposes all levels.
+ *
+ * @param ctx Initialised Vulkan context.
+ * @param texture CPU-side RGBA8 pixels.
+ * @param outImage Receives the created Vulkan image, view, allocation and mip count.
+ * @param format Vulkan image format. Use sRGB for colour maps and UNORM for data maps.
  */
 bool uploadTexture2D(const VulkanContext& ctx,
                      const LoadedTexture& texture,
-                     ImageResource&       outImage);
+                     ImageResource&       outImage,
+                     VkFormat             format = VK_FORMAT_R8G8B8A8_SRGB);
 
 /// @brief Destroys a BufferResource created by uploadBuffer().
 void destroyBuffer(const VulkanContext& ctx, BufferResource& buffer);

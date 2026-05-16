@@ -19,7 +19,7 @@ The project is currently developed as my Final Year Project at De Montfort Unive
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![Vulkan](https://img.shields.io/badge/Vulkan-1.3-AC162C?style=flat-square&logo=vulkan&logoColor=white)](https://registry.khronos.org/vulkan/)
 [![CMake](https://img.shields.io/badge/CMake-3.25+-064F8C?style=flat-square&logo=cmake&logoColor=white)](https://cmake.org/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey?style=flat-square&logo=linux&logoColor=white)](#building-for-windows-and-linux)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey?style=flat-square&logo=linux&logoColor=white)](https://github.com/Raiju-Deeq/FYP-Vulkan-Renderer#building-for-windows-and-linux)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -83,7 +83,9 @@ Raiju Renderer currently has three main use cases.
 - No legacy `VkFramebuffer`
 - Depth attachment support
 - Textured OBJ rendering
-- Basic diffuse lighting
+- Cook-Torrance direct PBR lighting
+- Mipmap generation for loaded textures
+- Optional PBR texture slots for base colour, metallic/roughness, AO, emissive, and reserved normal maps
 - Debug normals view
 - Wireframe pipeline variant
 - Optional back-face culling
@@ -141,9 +143,9 @@ The renderer is intentionally scoped around a small vertical slice.
 
 ### Stretch Goals
 
-- [ ] Mipmaps
+- [x] Mipmaps
 - [ ] Anisotropic filtering
-- [ ] PBR material model
+- [x] PBR material model
 - [ ] Scene loading
 - [ ] Shadow mapping
 - [ ] Gaussian splat rendering

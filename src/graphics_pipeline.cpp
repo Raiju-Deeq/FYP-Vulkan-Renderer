@@ -21,6 +21,7 @@
 #include "graphics_pipeline.hpp"
 #include "vulkan_context.hpp"
 #include "mesh.hpp"
+#include "texture.hpp"
 
 #include <spdlog/spdlog.h>
 #include <cstddef>
@@ -269,17 +270,27 @@ bool Pipeline::init(const VulkanContext& ctx,
     // The layout declares what *types* of resources the shaders can access:
     //   - setLayoutCount / pSetLayouts  : descriptor set layouts (UBOs, samplers)
     //   - pushConstantRangeCount        : push constant ranges
-    // The mesh shader reads one combined image sampler from set 0, binding 0.
-    // The per-draw MVP and debug mode are small enough for push constants.
-    VkDescriptorSetLayoutBinding samplerBinding{};
-    samplerBinding.binding = 0;
-    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerBinding.descriptorCount = 1;
-    samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // The mesh shader reads a small PBR texture set from set 0:
+    //   binding 0 = baseColor
+    //   binding 1 = normal map upload slot (reserved until tangent support exists)
+    //   binding 2 = packed metallic/roughness
+    //   binding 3 = ambient occlusion
+    //   binding 4 = emissive
+    //
+    // Material::init() always binds all five slots.  If the user only loads a
+    // base-colour PNG, the optional slots receive neutral 1x1 fallback textures
+    // so the shader never samples an unbound descriptor.
+    VkDescriptorSetLayoutBinding samplerBindings[PBR_TEXTURE_SLOT_COUNT]{};
+    for (uint32_t i = 0; i < PBR_TEXTURE_SLOT_COUNT; ++i) {
+        samplerBindings[i].binding = i;
+        samplerBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerBindings[i].descriptorCount = 1;
+        samplerBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
 
     VkDescriptorSetLayoutCreateInfo setLayoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    setLayoutInfo.bindingCount = 1;
-    setLayoutInfo.pBindings = &samplerBinding;
+    setLayoutInfo.bindingCount = PBR_TEXTURE_SLOT_COUNT;
+    setLayoutInfo.pBindings = samplerBindings;
 
     if (vkCreateDescriptorSetLayout(ctx.device(), &setLayoutInfo, nullptr,
                                     &m_descriptorSetLayout) != VK_SUCCESS) {

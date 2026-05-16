@@ -79,7 +79,8 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
  *   Renderer renderer;
  *   renderer.init(ctx, swap);
  *   while (!done) {
- *       if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material, mvp, debugMode)) {
+ *       if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material,
+ *                               mvp, debugMode, pbrParams, lightParams)) {
  *           renderer.waitIdle(ctx);
  *           swap.rebuild(ctx, w, h);
  *           pipeline.destroy(ctx);
@@ -218,6 +219,8 @@ public:
      * @param  mvp      Model-view-projection matrix pushed to the vertex shader.
      * @param  debugMode Fragment debug view selected from the ImGui overlay.
      *                   Wireframe is handled by choosing a different Pipeline.
+     * @param  pbrParams Material inputs for the direct Cook-Torrance shader.
+     * @param  lightParams Movable direct light controls.
      * @return true     Frame submitted and queued for presentation successfully.
      * @return false    Swapchain is out of date (`VK_ERROR_OUT_OF_DATE_KHR` or
      *                  `VK_SUBOPTIMAL_KHR`) — caller must rebuild the swapchain
@@ -229,7 +232,9 @@ public:
                    const Mesh&          mesh,
                    const Material&      material,
                    const glm::mat4&     mvp,
-                   DebugViewMode        debugMode);
+                   DebugViewMode        debugMode,
+                   const PbrMaterialParams& pbrParams,
+                   const PbrLightParams& lightParams);
 
     /**
      * @brief Blocks until all queued GPU work has completed.

@@ -2,9 +2,12 @@
 
 layout(push_constant) uniform PushConstants {
     mat4 mvp;
-    // S2 debug mode is read by mesh.frag; it stays in this shared block so the
-    // C++ push-constant layout matches both shader stages.
-    int debugMode;
+    // The fragment shader consumes these material/light groups.  The vertex
+    // shader only needs mvp, but keeping one identical block across both
+    // stages makes the CPU/GPU push-constant layout easier to reason about.
+    vec4 baseColorFactor;         // rgb = base colour factor
+    vec4 debugOptions;            // x = debug mode
+    vec4 lightDirectionIntensity; // xyz = light direction, w = intensity
 } pc;
 
 layout(location = 0) in vec3 inPosition;

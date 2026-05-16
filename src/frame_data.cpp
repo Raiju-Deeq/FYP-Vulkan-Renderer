@@ -342,7 +342,9 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
                           const Mesh&          mesh,
                           const Material&      material,
                           const glm::mat4&     mvp,
-                          DebugViewMode        debugMode)
+                          DebugViewMode        debugMode,
+                          const PbrMaterialParams& pbrParams,
+                          const PbrLightParams& lightParams)
 {
     // ── Step 1: Wait for in-flight fence ──────────────────────────────────
     // Block the CPU until the GPU finishes all commands submitted in the
@@ -498,13 +500,18 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     // ── Step 8: Bind pipeline and draw ────────────────────────────────────
-    // The selected pipeline may be solid or wireframe. The selected debug mode
-    // is pushed separately so the fragment shader can switch to normals view.
+    // The selected pipeline may be solid or wireframe.  The push constants
+    // carry the transform plus the small per-frame material/light controls for
+    // the PBR shader.  This is deliberately lightweight: I can tune material
+    // response and move the direct light without creating a UBO or rebuilding
+    // descriptors.
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
     material.bindDescriptorSet(cmd, pipeline.layout());
     const DrawPushConstants pushConstants{
         .mvp = mvp,
-        .debugMode = static_cast<int32_t>(debugMode)
+        .baseColorFactor = glm::vec4(pbrParams.baseColorFactor, 0.0f),
+        .debugOptions = glm::vec4(static_cast<float>(debugMode), 0.0f, 0.0f, 0.0f),
+        .lightDirectionIntensity = glm::vec4(lightParams.direction, lightParams.intensity)
     };
     vkCmdPushConstants(cmd,
                        pipeline.layout(),
