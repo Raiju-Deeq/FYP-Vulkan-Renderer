@@ -44,6 +44,12 @@ The project is currently developed as my Final Year Project at De Montfort Unive
   <em>Milestone update: current renderer state showing the textured model workflow with the live ImGui inspection controls.</em>
 </p>
 
+<p align="center">
+  <img src="docs/prototype-evidence/MilestoneUpdate-GaussianSplats.png" alt="Gaussian splat renderer milestone update with ImGui controls" width="780"/>
+  <br/>
+  <em>Milestone update: experimental Gaussian-style PLY splat rendering shown through the live ImGui inspection controls.</em>
+</p>
+
 ---
 
 ## Purpose
