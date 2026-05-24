@@ -2,10 +2,6 @@
 
 # Raiju Renderer
 
-## Product Page
-
-[View the Raiju Renderer product page](https://raiju-deeq.github.io/FYP-Vulkan-Renderer/)
-
 **Release State:** v0.3.0 Gaussian Splat Prototype / Final Year Project
 **Renderer Version:** Textured OBJ + Gaussian-style PLY splat vertical slice
 **Graphics API:** Vulkan 1.3  
