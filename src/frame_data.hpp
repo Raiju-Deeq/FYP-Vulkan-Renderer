@@ -55,6 +55,7 @@ class SwapChain;
 class Pipeline;
 class Mesh;
 class Material;
+class GaussianSplat;
 struct GLFWwindow;
 
 /// @brief Number of frames the CPU can be ahead of the GPU.
@@ -216,11 +217,15 @@ public:
      * @param  pipeline Compiled graphics pipeline.
      * @param  mesh     Uploaded mesh to bind and draw.
      * @param  material Material descriptor set to bind before drawing.
+     * @param  renderMesh true to draw the OBJ mesh, false to hide it.
+     * @param  splats   Optional Gaussian splat buffer/pipeline to draw after the mesh.
      * @param  mvp      Model-view-projection matrix pushed to the vertex shader.
      * @param  debugMode Fragment debug view selected from the ImGui overlay.
      *                   Wireframe is handled by choosing a different Pipeline.
      * @param  pbrParams Material inputs for the direct Cook-Torrance shader.
      * @param  lightParams Movable direct light controls.
+     * @param  splatRadiusScale Runtime size multiplier for loaded splats.
+     * @param  splatOpacityScale Runtime alpha multiplier for loaded splats.
      * @return true     Frame submitted and queued for presentation successfully.
      * @return false    Swapchain is out of date (`VK_ERROR_OUT_OF_DATE_KHR` or
      *                  `VK_SUBOPTIMAL_KHR`) — caller must rebuild the swapchain
@@ -231,10 +236,14 @@ public:
                    const Pipeline&      pipeline,
                    const Mesh&          mesh,
                    const Material&      material,
+                   bool                 renderMesh,
+                   const GaussianSplat* splats,
                    const glm::mat4&     mvp,
                    DebugViewMode        debugMode,
                    const PbrMaterialParams& pbrParams,
-                   const PbrLightParams& lightParams);
+                   const PbrLightParams& lightParams,
+                   float splatRadiusScale,
+                   float splatOpacityScale);
 
     /**
      * @brief Blocks until all queued GPU work has completed.

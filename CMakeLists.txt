@@ -17,6 +17,7 @@ set(SOURCES
         src/graphics_pipeline.cpp
         src/gpu_buffer.cpp
         src/mesh.cpp
+        src/gaussian_splat.cpp
         src/texture.cpp
 )
 

@@ -45,6 +45,7 @@
 #include "graphics_pipeline.hpp"
 #include "mesh.hpp"
 #include "texture.hpp"
+#include "gaussian_splat.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -341,10 +342,14 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
                           const Pipeline&      pipeline,
                           const Mesh&          mesh,
                           const Material&      material,
+                          bool                 renderMesh,
+                          const GaussianSplat* splats,
                           const glm::mat4&     mvp,
                           DebugViewMode        debugMode,
                           const PbrMaterialParams& pbrParams,
-                          const PbrLightParams& lightParams)
+                          const PbrLightParams& lightParams,
+                          float splatRadiusScale,
+                          float splatOpacityScale)
 {
     // ── Step 1: Wait for in-flight fence ──────────────────────────────────
     // Block the CPU until the GPU finishes all commands submitted in the
@@ -505,22 +510,32 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
     // the PBR shader.  This is deliberately lightweight: I can tune material
     // response and move the direct light without creating a UBO or rebuilding
     // descriptors.
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
-    material.bindDescriptorSet(cmd, pipeline.layout());
-    const DrawPushConstants pushConstants{
-        .mvp = mvp,
-        .baseColorFactor = glm::vec4(pbrParams.baseColorFactor, 0.0f),
-        .debugOptions = glm::vec4(static_cast<float>(debugMode), 0.0f, 0.0f, 0.0f),
-        .lightDirectionIntensity = glm::vec4(lightParams.direction, lightParams.intensity)
-    };
-    vkCmdPushConstants(cmd,
-                       pipeline.layout(),
-                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0,
-                       sizeof(DrawPushConstants),
-                       &pushConstants);
-    mesh.bind(cmd);
-    mesh.draw(cmd);
+    if (renderMesh) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle());
+        material.bindDescriptorSet(cmd, pipeline.layout());
+        const DrawPushConstants pushConstants{
+            .mvp = mvp,
+            .baseColorFactor = glm::vec4(pbrParams.baseColorFactor, 0.0f),
+            .debugOptions = glm::vec4(static_cast<float>(debugMode), 0.0f, 0.0f, 0.0f),
+            .lightDirectionIntensity = glm::vec4(lightParams.direction, lightParams.intensity)
+        };
+        vkCmdPushConstants(cmd,
+                           pipeline.layout(),
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(DrawPushConstants),
+                           &pushConstants);
+        mesh.bind(cmd);
+        mesh.draw(cmd);
+    }
+
+    // C3 stretch path: draw loaded Gaussian-style point splats after the
+    // opaque mesh.  The splat pipeline uses alpha blending and depth testing
+    // without depth writes, so it can sit inside the same Dynamic Rendering
+    // pass while leaving the stable mesh/PBR path unchanged.
+    if (splats != nullptr && splats->isDrawable()) {
+        splats->draw(cmd, mvp, splatRadiusScale, splatOpacityScale);
+    }
 
     // ImGui draw calls are recorded inside the same Dynamic Rendering scope.
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);

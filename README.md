@@ -92,6 +92,7 @@ Raiju Renderer currently has three main use cases.
 - Cook-Torrance direct PBR lighting
 - Mipmap generation for loaded textures
 - Optional PBR texture slots for base colour, metallic/roughness, AO, emissive, and reserved normal maps
+- Experimental ASCII/binary-little-endian `.ply` Gaussian-style splat rendering
 - Debug normals view
 - Wireframe pipeline variant
 - Optional back-face culling
@@ -154,7 +155,7 @@ The renderer is intentionally scoped around a small vertical slice.
 - [x] PBR material model
 - [ ] Scene loading
 - [ ] Shadow mapping
-- [ ] Gaussian splat rendering
+- [x] Experimental Gaussian-style ASCII/binary `.ply` splat rendering
 
 Stretch goals are deliberately placed after the core renderer so they do not compete with the final report, testing, and evaluation.
 
@@ -322,12 +323,15 @@ FYP-Vulkan-Renderer/
 │   ├── graphics_pipeline.hpp / graphics_pipeline.cpp
 │   ├── gpu_buffer.hpp / gpu_buffer.cpp
 │   ├── mesh.hpp / mesh.cpp
+│   ├── gaussian_splat.hpp / gaussian_splat.cpp
 │   └── texture.hpp / texture.cpp
 ├── shaders/
 │   ├── triangle.vert
 │   ├── triangle.frag
 │   ├── mesh.vert
-│   └── mesh.frag
+│   ├── mesh.frag
+│   ├── splat.vert
+│   └── splat.frag
 ├── assets/
 │   ├── models/
 │   └── textures/
@@ -349,6 +353,7 @@ FYP-Vulkan-Renderer/
 | `Renderer` | Command buffers, fences, semaphores, frame submission, ImGui rendering |
 | `GpuBuffer` | Buffer/image creation, staging uploads, layout transitions |
 | `Mesh` | OBJ loading, vertex/index data, GPU mesh buffers |
+| `GaussianSplat` | ASCII/binary `.ply` point ingestion, storage buffer upload, soft billboard splat rendering |
 | `Material` | Texture loading, image view, sampler, descriptor set |
 
 ---

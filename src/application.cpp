@@ -49,6 +49,7 @@
 #include "graphics_pipeline.hpp"
 #include "frame_data.hpp"
 #include "mesh.hpp"
+#include "gaussian_splat.hpp"
 #include "texture.hpp"
 
 #include <imgui.h>
@@ -84,8 +85,11 @@ static constexpr char VERT_SPV[] = "shaders/mesh.vert.spv";
 
 /// Path to the compiled fragment shader.
 static constexpr char FRAG_SPV[] = "shaders/mesh.frag.spv";
+static constexpr char SPLAT_VERT_SPV[] = "shaders/splat.vert.spv";
+static constexpr char SPLAT_FRAG_SPV[] = "shaders/splat.frag.spv";
 static constexpr char MODEL_PATH[] = "assets/models/viking_room.obj";
 static constexpr char TEXTURE_PATH[] = "assets/textures/viking_room.png";
+static constexpr char DEFAULT_SPLAT_PATH[] = "assets/models/point_cloud.ply";
 
 /// Small scene-space offset used to keep the Viking model centred in the view.
 /// I keep this as a named constant so I can tune the placement without touching
@@ -110,7 +114,8 @@ enum class AssetBrowserTarget
     NormalTexture,      ///< Optional tangent-space normal map.
     MetallicRoughnessTexture, ///< Optional packed map: G = roughness, B = metallic.
     AmbientOcclusionTexture,  ///< Optional AO map.
-    EmissiveTexture     ///< Optional emissive colour map.
+    EmissiveTexture,    ///< Optional emissive colour map.
+    GaussianSplatPly    ///< Optional C3 `.ply` point splat file.
 };
 
 /**
@@ -176,6 +181,9 @@ std::vector<std::string> allowedExtensions(AssetBrowserTarget target)
     if (target == AssetBrowserTarget::Model) {
         return {".obj"};
     }
+    if (target == AssetBrowserTarget::GaussianSplatPly) {
+        return {".ply"};
+    }
     return {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".ppm"};
 }
 
@@ -199,6 +207,8 @@ const char* assetBrowserTitle(AssetBrowserTarget target)
         return "Find AO map";
     case AssetBrowserTarget::EmissiveTexture:
         return "Find emissive map";
+    case AssetBrowserTarget::GaussianSplatPly:
+        return "Find Gaussian splat PLY";
     }
     return "Find texture";
 }
@@ -210,7 +220,8 @@ const char* assetBrowserTitle(AssetBrowserTarget target)
  */
 bool isTextureTarget(AssetBrowserTarget target)
 {
-    return target != AssetBrowserTarget::Model;
+    return target != AssetBrowserTarget::Model &&
+           target != AssetBrowserTarget::GaussianSplatPly;
 }
 
 /**
@@ -244,6 +255,8 @@ void assignTextureToSlot(PbrTextureSet& textures,
         break;
     case AssetBrowserTarget::EmissiveTexture:
         textures.emissive = std::move(texture);
+        break;
+    case AssetBrowserTarget::GaussianSplatPly:
         break;
     case AssetBrowserTarget::Model:
         break;
@@ -528,12 +541,28 @@ int Application::run()
         return EXIT_FAILURE;
     }
 
+    GaussianSplat gaussianSplats;
+    if (!gaussianSplats.initPipeline(ctx,
+                                     SPLAT_VERT_SPV,
+                                     SPLAT_FRAG_SPV,
+                                     swap.format(),
+                                     swap.depthFormat())) {
+        material.destroy(ctx);
+        mesh.destroy(ctx);
+        destroyMeshPipelines(ctx, pipelines);
+        swap.destroy(ctx);
+        ctx.destroy();
+        windowSystem.destroy();
+        return EXIT_FAILURE;
+    }
+
     // ── Renderer ──────────────────────────────────────────────────────────
     // Creates the command pool, double-buffered command buffers, imageAvailable
     // semaphores (×MAX_FRAMES_IN_FLIGHT), renderFinished semaphores
     // (×swap.imageCount()), and inFlight fences (×MAX_FRAMES_IN_FLIGHT).
     Renderer renderer;
     if (!renderer.init(ctx, swap)) {
+        gaussianSplats.destroy(ctx);
         material.destroy(ctx);
         mesh.destroy(ctx);
         destroyMeshPipelines(ctx, pipelines);
@@ -546,6 +575,7 @@ int Application::run()
     // ── ImGui ─────────────────────────────────────────────────────────────
     if (!renderer.initImGui(ctx, swap, window)) {
         renderer.destroy(ctx);
+        gaussianSplats.destroy(ctx);
         material.destroy(ctx);
         mesh.destroy(ctx);
         destroyMeshPipelines(ctx, pipelines);
@@ -569,6 +599,7 @@ int Application::run()
     std::optional<std::filesystem::path> currentMetallicRoughnessPath;
     std::optional<std::filesystem::path> currentAmbientOcclusionPath;
     std::optional<std::filesystem::path> currentEmissivePath;
+    std::optional<std::filesystem::path> currentGaussianSplatPath;
     AssetBrowserState assetBrowser{};
 
     // S2 debug controls. These are independent on purpose:
@@ -578,9 +609,20 @@ int Application::run()
     bool showWireframe = false;
     bool useBackfaceCulling = true;
     bool showNormals = false;
+    bool showObjMesh = true;
     PbrMaterialParams pbrParams{};
     PbrLightParams lightParams{};
     float cameraDistance = CAMERA_START_DISTANCE;
+    bool showGaussianSplats = false;
+    float splatRadiusScale = 1.0f;
+    float splatOpacityScale = 1.0f;
+
+    // C3 starts with a default point cloud if one exists, but still keeps the
+    // ImGui browser so I can hot-swap different .ply splat files during a demo.
+    if (std::filesystem::exists(DEFAULT_SPLAT_PATH) &&
+        gaussianSplats.loadFromPly(ctx, DEFAULT_SPLAT_PATH)) {
+        currentGaussianSplatPath = DEFAULT_SPLAT_PATH;
+    }
 
     // ── Render loop ───────────────────────────────────────────────────────
     while (!windowSystem.shouldClose()) {
@@ -650,6 +692,7 @@ int Application::run()
         // S2: small mesh inspection controls for the report/demo.
         // Backface culling hides inside faces; disable it for double-sided assets.
         // Wireframe shows triangle topology; normals view shows imported normals.
+        ImGui::Checkbox("Show OBJ mesh", &showObjMesh);
         ImGui::Checkbox("Backface culling", &useBackfaceCulling);
         ImGui::Checkbox("Wireframe", &showWireframe);
         ImGui::Checkbox("Normals view", &showNormals);
@@ -710,6 +753,26 @@ int Application::run()
                                 AssetBrowserTarget::EmissiveTexture,
                                 currentEmissivePath,
                                 "<default emissive>");
+        ImGui::Separator();
+
+        // C3: minimal Gaussian splat stretch controls.  The first pass loads
+        // ASCII .ply point data and renders soft alpha-blended billboards.  I
+        // keep it separate from the mesh controls so the viva can clearly show
+        // this as an optional stretch feature, not part of the core OBJ path.
+        ImGui::Text("Gaussian splats");
+        ImGui::Checkbox("Show splats", &showGaussianSplats);
+        ImGui::SliderFloat("Splat radius", &splatRadiusScale, 0.1f, 5.0f, "%.2f");
+        ImGui::SliderFloat("Splat opacity", &splatOpacityScale, 0.0f, 2.0f, "%.2f");
+        ImGui::Text("Points: %u", gaussianSplats.pointCount());
+        if (ImGui::Button("Find PLY splat")) {
+            openAssetBrowser(assetBrowser,
+                             AssetBrowserTarget::GaussianSplatPly,
+                             currentGaussianSplatPath.value_or(std::filesystem::path{"assets"}));
+        }
+        const std::string splatPathLabel = currentGaussianSplatPath.has_value()
+            ? currentGaussianSplatPath->string()
+            : "<no splat file loaded>";
+        ImGui::TextWrapped("%s", splatPathLabel.c_str());
         ImGui::End();
 
         const std::optional<AssetSelection> selectedAsset = drawAssetBrowser(assetBrowser);
@@ -726,6 +789,12 @@ int Application::run()
                     if (mesh.upload(ctx, replacementMeshData.vertices, replacementMeshData.indices)) {
                         currentModelPath = selectedPath;
                     }
+                }
+            } else if (selectedAsset->target == AssetBrowserTarget::GaussianSplatPly) {
+                renderer.waitIdle(ctx);
+                if (gaussianSplats.loadFromPly(ctx, selectedPath.string())) {
+                    currentGaussianSplatPath = selectedPath;
+                    showGaussianSplats = true;
                 }
             } else if (isTextureTarget(selectedAsset->target)) {
                 LoadedTexture replacementTexture{};
@@ -754,6 +823,8 @@ int Application::run()
                             break;
                         case AssetBrowserTarget::EmissiveTexture:
                             currentEmissivePath = selectedPath;
+                            break;
+                        case AssetBrowserTarget::GaussianSplatPly:
                             break;
                         case AssetBrowserTarget::Model:
                             break;
@@ -794,8 +865,14 @@ int Application::run()
         const DebugViewMode debugViewMode = showNormals ? DebugViewMode::Normals
                                                         : DebugViewMode::Lit;
 
+        const GaussianSplat* activeSplats =
+            showGaussianSplats ? &gaussianSplats : nullptr;
+
         if (!renderer.drawFrame(ctx, swap, activePipeline, mesh, material,
-                                mvp, debugViewMode, pbrParams, lightParams)) {
+                                showObjMesh,
+                                activeSplats,
+                                mvp, debugViewMode, pbrParams, lightParams,
+                                splatRadiusScale, splatOpacityScale)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
             // I must wait for all in-flight GPU work to finish before
@@ -831,12 +908,21 @@ int Application::run()
             // the same, so rebuilding is the correct approach.
             material.destroy(ctx);
             destroyMeshPipelines(ctx, pipelines);
+            gaussianSplats.destroyPipeline(ctx);
             if (!initMeshPipelines(ctx, swap.format(), swap.depthFormat(), pipelines)) {
                 spdlog::error("Application: mesh pipeline rebuild failed; exiting");
                 break;
             }
             if (!material.init(ctx, materialTextures, pipelines.solid.descriptorSetLayout())) {
                 spdlog::error("Application: material rebuild failed; exiting");
+                break;
+            }
+            if (!gaussianSplats.initPipeline(ctx,
+                                             SPLAT_VERT_SPV,
+                                             SPLAT_FRAG_SPV,
+                                             swap.format(),
+                                             swap.depthFormat())) {
+                spdlog::error("Application: Gaussian splat pipeline rebuild failed; exiting");
                 break;
             }
 
@@ -861,6 +947,7 @@ int Application::run()
     // Destroy in reverse init order: ImGui → Renderer → Pipeline → SwapChain → Context.
     renderer.shutdownImGui(ctx);
     renderer.destroy(ctx);
+    gaussianSplats.destroy(ctx);
     material.destroy(ctx);
     mesh.destroy(ctx);
     destroyMeshPipelines(ctx, pipelines);
