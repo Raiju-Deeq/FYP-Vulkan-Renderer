@@ -2,8 +2,12 @@
 
 # Raiju Renderer
 
-**Release State:** v0.2.0 PBR Prototype / Final Year Project
-**Renderer Version:** Textured OBJ PBR vertical slice
+## Product Page
+
+[View the Raiju Renderer product page](https://raiju-deeq.github.io/FYP-Vulkan-Renderer/)
+
+**Release State:** v0.3.0 Gaussian Splat Prototype / Final Year Project
+**Renderer Version:** Textured OBJ + Gaussian-style PLY splat vertical slice
 **Graphics API:** Vulkan 1.3  
 **Language:** C++20  
 **Platforms:** Linux and Windows

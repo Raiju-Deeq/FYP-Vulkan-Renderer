@@ -2,6 +2,29 @@
 
 All notable project changes are tracked here.
 
+## v0.3.0 - 2026-05-24
+
+Gaussian splat prototype milestone release focused on the C3 stretch objective.
+
+### Added
+
+- Experimental Gaussian-style `.ply` splat rendering path.
+- ASCII and binary-little-endian PLY ingestion for point cloud assets.
+- Postshot-style `point_cloud.ply` support using position, DC colour, opacity, and scale data.
+- VMA-backed GPU storage buffer upload for splat point records.
+- Separate alpha-blended splat graphics pipeline using `splat.vert` and `splat.frag`.
+- Runtime ImGui controls for showing/hiding OBJ meshes and splats independently.
+- Runtime `.ply` hot-swapping through the existing ImGui asset browser workflow.
+- Splat radius and opacity preview controls.
+- Updated README screenshots and assessment documents for the Gaussian splat milestone.
+
+### Known Limitations
+
+- Gaussian splatting is currently a preview-style stretch implementation, not full research-grade 3DGS.
+- The splat renderer does not yet implement covariance projection, quaternion rotation, full spherical harmonics, depth sorting, or high-quality alpha compositing.
+- Runtime still requires a Vulkan 1.3 capable GPU/driver.
+- Windows and Linux binary packages are provided for releases.
+
 ## v0.2.0 - 2026-05-19
 
 Current renderer milestone release focused on PBR material rendering and texture quality improvements.
