@@ -14,8 +14,6 @@
  * vk-bootstrap doesn't hide anything from me — it just automates the grunt
  * work and hands me the raw Vulkan handles at the end.
  *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-04-02
  * @see    vulkan_context.hpp for the class interface and ownership rules.
  * @see    https://github.com/charles-lunarg/vk-bootstrap
  */
@@ -68,7 +66,7 @@ bool VulkanContext::init(GLFWwindow* window)
     auto instResult = builder
         .set_app_name("FYP Vulkan Renderer")
         .require_api_version(1, 3, 0)       // I refuse GPUs/drivers older than Vulkan 1.3
-        .request_validation_layers()         // Enable Khronos validation (debug only)
+        .request_validation_layers()         // Keep Khronos validation active for development
         .use_default_debug_messenger()       // Print validation errors to stderr
         .enable_extensions(                  // Add GLFW's required windowing extensions
             std::vector<const char*>(glfwExts, glfwExts + glfwExtCount))
@@ -106,18 +104,14 @@ bool VulkanContext::init(GLFWwindow* window)
     // the instance is destroyed.
     //
     // I enumerate all available GPUs and select the best one that meets my
-    // minimum requirements. The required features live in two separate structs
-    // because they were promoted to core in different Vulkan versions:
+    // minimum requirements. The required features are exactly the ones the
+    // current renderer uses:
     //
     //   VkPhysicalDeviceVulkan13Features:
     //   - dynamicRendering  → lets me record render commands without pre-baking
     //                         a VkRenderPass. This is the approach I use throughout.
     //   - synchronization2  → cleaner image layout barrier API with granular
     //                         pipeline stage masks (VkImageMemoryBarrier2).
-    //
-    //   VkPhysicalDeviceVulkan12Features:
-    //   - bufferDeviceAddress → keeps the future Gaussian splatting path possible
-    //                           without changing device creation later.
     //
     //   VkPhysicalDeviceFeatures:
     //   - fillModeNonSolid → lets the S2 debug pipeline render true wireframe.
@@ -130,11 +124,6 @@ bool VulkanContext::init(GLFWwindow* window)
     features13.dynamicRendering = VK_TRUE;
     features13.synchronization2 = VK_TRUE;
 
-    VkPhysicalDeviceVulkan12Features features12{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
-    };
-    features12.bufferDeviceAddress = VK_TRUE;
-
     // The selector needs both the instance wrapper (to iterate GPUs) and the
     // surface (to test presentation support on each candidate).
     vkb::PhysicalDeviceSelector selector(vkbInstance, m_surface);
@@ -142,7 +131,6 @@ bool VulkanContext::init(GLFWwindow* window)
         .set_minimum_version(1, 3)
         .set_required_features(features10)
         .set_required_features_13(features13)
-        .set_required_features_12(features12)
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete) // I prefer a dGPU over iGPU
         .select();
 
@@ -201,7 +189,6 @@ bool VulkanContext::init(GLFWwindow* window)
     // Vulkan allocation is deliberately verbose, so I create one VMA allocator
     // here and pass it through the context.
     VmaAllocatorCreateInfo allocatorInfo{};
-    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     allocatorInfo.physicalDevice = m_physicalDevice;
     allocatorInfo.device = m_device;
     allocatorInfo.instance = m_instance;

@@ -35,9 +35,6 @@
  * `VUID-vkQueueSubmit-pSignalSemaphores-00067`.  Indexing `renderFinished` by
  * `imageIndex` is safe because the swapchain only re-issues image N after its
  * previous presentation is complete, guaranteeing the semaphore is free.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
  */
 
 #ifndef FYP_VULKAN_RENDERER_RENDERER_HPP
@@ -81,7 +78,9 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
  *   renderer.init(ctx, swap);
  *   while (!done) {
  *       if (!renderer.drawFrame(ctx, swap, pipeline, mesh, material,
- *                               mvp, debugMode, pbrParams, lightParams)) {
+ *                               true, splats, mvp, splatView, projection,
+ *                               debugMode, pbrParams, lightParams,
+ *                               splatRadiusScale, splatOpacityScale)) {
  *           renderer.waitIdle(ctx);
  *           swap.rebuild(ctx, w, h);
  *           pipeline.destroy(ctx);
@@ -220,6 +219,8 @@ public:
      * @param  renderMesh true to draw the OBJ mesh, false to hide it.
      * @param  splats   Optional Gaussian splat buffer/pipeline to draw after the mesh.
      * @param  mvp      Model-view-projection matrix pushed to the vertex shader.
+     * @param  view     Model-to-view matrix used by GPU-projected splats.
+     * @param  projection View-to-clip matrix used by GPU-projected splats.
      * @param  debugMode Fragment debug view selected from the ImGui overlay.
      *                   Wireframe is handled by choosing a different Pipeline.
      * @param  pbrParams Material inputs for the direct Cook-Torrance shader.
@@ -239,6 +240,8 @@ public:
                    bool                 renderMesh,
                    const GaussianSplat* splats,
                    const glm::mat4&     mvp,
+                   const glm::mat4&     view,
+                   const glm::mat4&     projection,
                    DebugViewMode        debugMode,
                    const PbrMaterialParams& pbrParams,
                    const PbrLightParams& lightParams,

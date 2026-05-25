@@ -109,8 +109,8 @@ bool loadObjMesh(const std::string& path, LoadedMesh& outMesh)
             }
 
             outMesh.vertices.push_back(vertex);
-            // I keep one output vertex per OBJ index for now. Deduplication can
-            // be added later, but this is simple and correct for the milestone.
+            // I keep one output vertex per OBJ index because it preserves each
+            // face's position/normal/UV combination exactly as tinyobj gives it.
             outMesh.indices.push_back(static_cast<uint32_t>(outMesh.indices.size()));
         }
     }

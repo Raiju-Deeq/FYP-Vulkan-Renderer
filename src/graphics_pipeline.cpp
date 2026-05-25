@@ -10,11 +10,10 @@
  * attachment *formats* the pipeline will render to.  The actual image views
  * are then provided at command-recording time via `vkCmdBeginRendering`.
  *
- * This is cleaner for a renderer that rebuilds pipelines on resize (I just
- * pass the new swapchain format — no RenderPass object to update).
+ * This keeps resize handling direct: when the swapchain/depth formats change,
+ * I rebuild the pipeline with the new formats and do not manage any separate
+ * render-pass object.
  *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-04-10
  * @see    graphics_pipeline.hpp for the class interface.
  */
 
@@ -112,7 +111,7 @@ VkShaderModule Pipeline::createShaderModule(VkDevice device,
 /// It completely replaces the `renderPass` field, which is left as
 /// `VK_NULL_HANDLE`.  The validation layers will confirm this is correct.
 ///
-/// **Why polygonMode is a parameter now:**
+/// **Why polygonMode is a parameter:**
 /// S2 needs a real wireframe toggle. Vulkan wireframe is not a shader effect;
 /// it is rasterizer state, so I compile two otherwise-identical pipelines:
 /// one with `VK_POLYGON_MODE_FILL` and one with `VK_POLYGON_MODE_LINE`.

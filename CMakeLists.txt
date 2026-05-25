@@ -166,6 +166,8 @@ else()
             "  glslc shaders/triangle.frag -o shaders/triangle.frag.spv\n"
             "  glslc shaders/mesh.vert -o shaders/mesh.vert.spv\n"
             "  glslc shaders/mesh.frag -o shaders/mesh.frag.spv\n"
+            "  glslc shaders/splat.vert -o shaders/splat.vert.spv\n"
+            "  glslc shaders/splat.frag -o shaders/splat.frag.spv\n"
             "glslc ships with the Vulkan SDK. Check that VULKAN_SDK is set correctly."
     )
 endif()

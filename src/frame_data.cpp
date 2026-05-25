@@ -33,9 +33,6 @@
  * Transitioning between layouts requires a `VkImageMemoryBarrier2` — it both
  * changes the layout and inserts a memory barrier so previous writes are
  * visible to subsequent reads.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-04-10
  * @see    frame_data.hpp for the class interface and full step-by-step drawFrame docs.
  */
 
@@ -255,9 +252,8 @@ bool Renderer::initImGui(const VulkanContext& ctx, const SwapChain& swap, GLFWwi
     // Dynamic rendering: no VkRenderPass.  The backend still needs to know the
     // swapchain colour format so it can build its own small UI pipeline.
     //
-    // If the swapchain format ever changes on rebuild, the ImGui backend should
-    // be recreated too.  Most drivers keep the format stable, but this is worth
-    // keeping in mind when tightening resize handling for the final report.
+    // If the swapchain format changes on rebuild, I recreate the ImGui backend
+    // so its internal pipeline targets the same Dynamic Rendering format.
     VkFormat colorFormat = swap.format();
     VkPipelineRenderingCreateInfoKHR pipelineRenderingInfo{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
     pipelineRenderingInfo.colorAttachmentCount    = 1;
@@ -345,6 +341,8 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
                           bool                 renderMesh,
                           const GaussianSplat* splats,
                           const glm::mat4&     mvp,
+                          const glm::mat4&     view,
+                          const glm::mat4&     projection,
                           DebugViewMode        debugMode,
                           const PbrMaterialParams& pbrParams,
                           const PbrLightParams& lightParams,
@@ -529,12 +527,12 @@ bool Renderer::drawFrame(const VulkanContext& ctx,
         mesh.draw(cmd);
     }
 
-    // C3 stretch path: draw loaded Gaussian-style point splats after the
-    // opaque mesh.  The splat pipeline uses alpha blending and depth testing
-    // without depth writes, so it can sit inside the same Dynamic Rendering
-    // pass while leaving the stable mesh/PBR path unchanged.
+    // C3 stretch path: draw loaded Gaussian splats after the opaque mesh.
+    // The CPU no longer projects or sorts the cloud every frame; the shader
+    // reads the uploaded Gaussian buffer and projects every splat on the GPU.
     if (splats != nullptr && splats->isDrawable()) {
-        splats->draw(cmd, mvp, splatRadiusScale, splatOpacityScale);
+        splats->draw(cmd, view, projection, swap.extent(),
+                     splatRadiusScale, splatOpacityScale);
     }
 
     // ImGui draw calls are recorded inside the same Dynamic Rendering scope.

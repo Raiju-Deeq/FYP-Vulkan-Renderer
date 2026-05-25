@@ -13,20 +13,16 @@
  *  2. **Draw** — record GPU commands that write into that image.
  *  3. **Present** — hand the finished image back to the display engine.
  *
- * ## Why 4 images?
- * I request 3 images (triple-buffering) but the driver may grant more if
- * MAILBOX present mode is selected (it needs a spare image to replace the
- * pending frame without tearing). On my RX 5700 XT + Wayland setup, the
- * driver allocates 4.
+ * ## Image count
+ * I ask vk-bootstrap for a low-latency present mode and accept the image count
+ * chosen by the driver. Renderer then creates one render-finished semaphore per
+ * swapchain image so presentation synchronisation matches the actual count.
  *
  * ## Resize handling
  * When my OS window is resized the swapchain becomes *out of date* — the
  * image dimensions no longer match the window. The driver signals this by
  * returning `VK_ERROR_OUT_OF_DATE_KHR` from either acquire or present. I
  * then call rebuild() with the new dimensions.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
  */
 
 #ifndef FYP_VULKAN_RENDERER_SWAPCHAIN_HPP

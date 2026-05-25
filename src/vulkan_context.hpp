@@ -20,9 +20,6 @@
  *
  * @note  Physical devices and queues are *retrieved*, not *created*; they are
  *        owned by the driver and must NOT be destroyed explicitly.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-29
  */
 
 #ifndef FYP_VULKAN_RENDERER_VULKAN_CONTEXT_HPP
@@ -42,7 +39,7 @@ struct GLFWwindow; ///< Forward declaration — avoids including the full GLFW h
  * application must perform before any rendering can occur:
  *
  *  1. Create a `VkInstance` — registers my application with the Vulkan loader and
- *     enables validation layers in debug builds.
+ *     requests validation layers for development runs.
  *  2. Create a `VkSurfaceKHR` — a platform-neutral handle for the OS window that
  *     I'll present into (created by GLFW so I don't need platform-specific code).
  *  3. Select a `VkPhysicalDevice` — queries all GPUs and picks the best one that
@@ -94,9 +91,6 @@ public:
      *    `VkImageMemoryBarrier2` and finer pipeline stage masks.
      *  - `fillModeNonSolid` — allows my S2 debug wireframe checkbox to switch
      *    to a pipeline using `VK_POLYGON_MODE_LINE`.
-     *  - `bufferDeviceAddress` (Vulkan 1.2) — keeps the future Gaussian
-     *    splatting path possible without changing device creation later.
-     *
      * @param  window  A valid, already-created GLFW window. GLFW must be
      *                 initialised before calling this function.
      * @return true    All five stages succeeded.

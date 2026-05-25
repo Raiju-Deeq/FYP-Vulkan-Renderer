@@ -161,9 +161,8 @@ uint32_t calculateMipLevels(uint32_t width, uint32_t height)
  *
  * I generate mipmaps with `vkCmdBlitImage` and linear filtering.  That means
  * the format must support blit source, blit destination, and linear filtering
- * when used with optimal tiling.  If a future format fails this check, the
- * renderer should not try to record the blits because validation would reject
- * the command buffer.
+ * when used with optimal tiling.  If the chosen format fails this check, I stop
+ * before recording invalid blit commands.
  *
  * @param ctx Vulkan context used to query physical-device format support.
  * @param format Image format that will be blitted between mip levels.

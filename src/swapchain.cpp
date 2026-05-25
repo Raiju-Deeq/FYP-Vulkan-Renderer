@@ -12,9 +12,6 @@
  *  - then rank and select from the results manually
  *
  * vk-bootstrap does all of that internally and exposes a clean builder API.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-04-10
  * @see    swapchain.hpp for the class interface and ownership model.
  * @see    https://github.com/charles-lunarg/vk-bootstrap (SwapchainBuilder docs)
  */
@@ -78,6 +75,7 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
     auto imagesResult = vkbSwap.get_images();
     if (!imagesResult) {
         spdlog::error("SwapChain: failed to retrieve images: {}", imagesResult.error().message());
+        destroy(ctx);
         return false;
     }
     m_images = imagesResult.value();
@@ -90,6 +88,7 @@ bool SwapChain::init(const VulkanContext& ctx, uint32_t width, uint32_t height)
     auto viewsResult = vkbSwap.get_image_views();
     if (!viewsResult) {
         spdlog::error("SwapChain: failed to retrieve image views: {}", viewsResult.error().message());
+        destroy(ctx);
         return false;
     }
     m_imageViews = viewsResult.value();

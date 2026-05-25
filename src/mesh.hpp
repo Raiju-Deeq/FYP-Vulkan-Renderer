@@ -25,9 +25,6 @@
  * VMA (GPUOpen::VulkanMemoryAllocator) handles all of this automatically.
  * I call `vmaCreateBuffer` instead of `vkCreateBuffer` + `vkAllocateMemory`,
  * and `vmaDestroyBuffer` instead of `vkDestroyBuffer` + `vkFreeMemory`.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
  */
 
 #ifndef FYP_VULKAN_RENDERER_MESH_HPP

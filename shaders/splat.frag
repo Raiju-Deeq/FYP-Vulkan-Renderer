@@ -1,19 +1,37 @@
 #version 450
 
-layout(location = 0) in vec2 fragLocal;
-layout(location = 1) in vec4 fragColorOpacity;
+// ============================================================
+// splat.frag
+// Evaluates a 2D Gaussian conic and outputs pre-multiplied alpha.
+// ============================================================
+
+layout(location = 0) in vec2 fragPixelOffset;
+layout(location = 1) in vec3 fragColor;
+layout(location = 2) in float fragOpacity;
+layout(location = 3) in vec3 fragConic;
+
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    float distanceSquared = dot(fragLocal, fragLocal);
-    if (distanceSquared > 1.0) {
+    vec2 d = fragPixelOffset;
+
+    // 2D Gaussian exponent:
+    // power = -0.5 * (a*dx^2 + 2*b*dx*dy + c*dy^2)
+    float power = -0.5 * (
+        fragConic.x * d.x * d.x +
+        2.0 * fragConic.y * d.x * d.y +
+        fragConic.z * d.y * d.y
+    );
+
+    if (power > 0.0) {
         discard;
     }
 
-    // A simple 2D Gaussian falloff makes each point appear as a soft splat
-    // instead of a hard square billboard.
-    float gaussian = exp(-4.0 * distanceSquared);
-    float alpha = clamp(fragColorOpacity.a * gaussian, 0.0, 1.0);
+    float alpha = min(0.99, fragOpacity * exp(power));
+    if (alpha < 1.0 / 255.0) {
+        discard;
+    }
 
-    outColor = vec4(fragColorOpacity.rgb, alpha);
+    // Pipeline blending uses srcColor = ONE, so colour must be pre-multiplied.
+    outColor = vec4(fragColor * alpha, alpha);
 }

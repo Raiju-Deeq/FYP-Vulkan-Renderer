@@ -9,9 +9,9 @@
  *       └─ VulkanContext::init()     → instance, GPU, device, queue
  *           └─ SwapChain::init()     → swapchain images & views
  *               └─ Pipeline::init()  → SPIR-V shaders & graphics pipeline
- *                   └─ Renderer::init() → cmd buffers, semaphores, fences
- *                       └─ Render loop (drawFrame each tick)
- *                           └─ Teardown (reverse order)
+ *                   └─ Renderer::init() → command buffers, semaphores, fences
+ *                       └─ Render loop → ImGui controls, asset reloads, drawFrame()
+ *                           └─ Teardown in reverse ownership order
  * ```
  *
  * ## Why GLFW_NO_API?
@@ -25,8 +25,8 @@
  *  1. `drawFrame()` returns false (swapchain `VK_ERROR_OUT_OF_DATE_KHR`).
  *  2. I call `renderer.waitIdle()` to ensure the GPU finishes all in-flight work.
  *  3. `swap.rebuild()` tears down and recreates the swapchain at the new size.
- *  4. I also recreate `pipeline` because the colour attachment format *could*
- *     have changed (rare, but required for correctness).
+ *  4. I recreate the mesh and splat pipelines because Dynamic Rendering
+ *     pipelines declare their colour/depth attachment formats up front.
  *  5. The render loop continues from the next `drawFrame()`.
  *
  * ## Minimisation handling
@@ -37,9 +37,6 @@
  * @note  Shader `.spv` paths are relative to the working directory.  CMake
  *        copies compiled shaders to the build output directory at build time,
  *        so running the executable from the build directory resolves correctly.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-04-10
  */
 
 #include "application.hpp"
@@ -287,7 +284,7 @@ void openAssetBrowser(AssetBrowserState& browser,
  *
  * The browser intentionally stays simple: it lists directories first, filters
  * files by extension, and returns one selected path.  It avoids adding a native
- * file-dialog dependency while still letting me swap assets during a demo.
+ * file-dialog dependency while still letting me swap assets at runtime.
  *
  * @param browser Persistent browser UI state.
  * @return A selected asset path when the user clicks a valid file.
@@ -604,10 +601,11 @@ int Application::run()
 
     // S2 debug controls. These are independent on purpose:
     // - Wireframe swaps between the solid and line-mode pipelines.
-    // - Backface culling hides inside faces for closed meshes.
+    // - Backface culling is off by default because imported OBJs are not always
+    //   exported with the same winding rules.
     // - Normals view changes the fragment shader output through a push constant.
     bool showWireframe = false;
-    bool useBackfaceCulling = true;
+    bool useBackfaceCulling = false;
     bool showNormals = false;
     bool showObjMesh = true;
     PbrMaterialParams pbrParams{};
@@ -617,8 +615,8 @@ int Application::run()
     float splatRadiusScale = 1.0f;
     float splatOpacityScale = 1.0f;
 
-    // C3 starts with a default point cloud if one exists, but still keeps the
-    // ImGui browser so I can hot-swap different .ply splat files during a demo.
+    // C3 loads a default point cloud when present, and the ImGui browser lets
+    // me replace it at runtime without restarting the renderer.
     if (std::filesystem::exists(DEFAULT_SPLAT_PATH) &&
         gaussianSplats.loadFromPly(ctx, DEFAULT_SPLAT_PATH)) {
         currentGaussianSplatPath = DEFAULT_SPLAT_PATH;
@@ -689,7 +687,7 @@ int Application::run()
                          frametimeOffset, overlay, 0.0f, 50.0f, ImVec2(0.0f, 80.0f));
         ImGui::Separator();
 
-        // S2: small mesh inspection controls for the report/demo.
+        // S2 mesh inspection controls.
         // Backface culling hides inside faces; disable it for double-sided assets.
         // Wireframe shows triangle topology; normals view shows imported normals.
         ImGui::Checkbox("Show OBJ mesh", &showObjMesh);
@@ -755,10 +753,10 @@ int Application::run()
                                 "<default emissive>");
         ImGui::Separator();
 
-        // C3: minimal Gaussian splat stretch controls.  The first pass loads
-        // ASCII .ply point data and renders soft alpha-blended billboards.  I
-        // keep it separate from the mesh controls so the viva can clearly show
-        // this as an optional stretch feature, not part of the core OBJ path.
+        // C3: Gaussian splat stretch controls.  The loader now uploads the real
+        // PLY Gaussian attributes once, and the vertex shader projects every
+        // splat on the GPU each frame.  I keep this separate from the OBJ
+        // controls so it remains clearly separate from the stable OBJ path.
         ImGui::Text("Gaussian splats");
         ImGui::Checkbox("Show splats", &showGaussianSplats);
         ImGui::SliderFloat("Splat radius", &splatRadiusScale, 0.1f, 5.0f, "%.2f");
@@ -834,9 +832,9 @@ int Application::run()
             }
         }
 
-        // I build the camera matrices here for now because this milestone only
-        // has one rotating model. A dedicated Camera module can replace this
-        // once movement/input becomes part of the renderer.
+        // This renderer currently has one simple orbit-style camera and one
+        // shared model transform. Keeping the matrices here makes the draw path
+        // explicit without adding a Camera class before it is needed.
         const float elapsedSeconds =
             std::chrono::duration<float>(now - appStartTime).count();
         const float aspect =
@@ -857,6 +855,9 @@ int Application::run()
         // to match Vulkan's framebuffer coordinate system.
         projection[1][1] *= -1.0f;
         const glm::mat4 mvp = projection * view * model;
+        // I give splats the same rotating model transform as the OBJ path so
+        // both render modes use the same camera and placement logic.
+        const glm::mat4 splatView = view * model;
 
         // The debug checkboxes map to pipeline state for wireframe/culling and
         // shader state for normal visualisation.
@@ -871,8 +872,10 @@ int Application::run()
         if (!renderer.drawFrame(ctx, swap, activePipeline, mesh, material,
                                 showObjMesh,
                                 activeSplats,
-                                mvp, debugViewMode, pbrParams, lightParams,
-                                splatRadiusScale, splatOpacityScale)) {
+                                mvp, splatView, projection,
+                                debugViewMode, pbrParams, lightParams,
+                                splatRadiusScale,
+                                splatOpacityScale)) {
             // drawFrame returns false when the swapchain is out of date.
             // This happens on window resize or when VK_SUBOPTIMAL_KHR is returned.
             // I must wait for all in-flight GPU work to finish before

@@ -24,13 +24,10 @@
  *
  * ## Mesh pipeline specifics
  *  - Vertex input matches the `Vertex` layout from mesh.hpp.
- *  - Descriptor set 0 binds the sampled material texture.
+ *  - Descriptor set 0 binds the material texture set.
  *  - Push constants provide the model-view-projection matrix, material inputs,
  *    light controls and debug mode.
  *  - Dynamic viewport + scissor keep resize handling simple.
- *
- * @author Mohamed Deeq Mohamed (P2884884)
- * @date   2026-03-27
  */
 
 #ifndef FYP_VULKAN_RENDERER_PIPELINE_HPP
@@ -125,7 +122,8 @@ struct PbrLightParams
  * ## Dependency on SwapChain
  * I require the swapchain colour format so I can declare the correct attachment
  * format for Dynamic Rendering.  If the swapchain is rebuilt with a different
- * format (rare but possible), I must also be rebuilt — see the resize path in main.cpp.
+ * format, I must rebuild the pipeline as well — see the resize path in
+ * application.cpp.
  *
  * ## Usage
  * @code

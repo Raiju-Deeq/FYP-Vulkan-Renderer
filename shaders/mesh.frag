@@ -98,9 +98,9 @@ void main() {
     float ambientOcclusion = clamp(aoMap, 0.0, 1.0);
     vec3 emissive = max(emissiveMap, vec3(0.0));
 
-    // Direct lighting with Cook-Torrance BRDF.  The light direction is now a
-    // runtime input, so I can move the light around the model during a demo and
-    // show how roughness/metallic react.
+    // Direct lighting with Cook-Torrance BRDF.  The light direction is a
+    // runtime input, so I can move it around the model and see how
+    // roughness/metallic values react.
     vec3 lightDir = normalize(pc.lightDirectionIntensity.xyz);
     vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
     vec3 halfway = normalize(viewDir + lightDir);

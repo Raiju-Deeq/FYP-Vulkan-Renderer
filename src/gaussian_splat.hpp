@@ -1,16 +1,15 @@
 /**
  * @file gaussian_splat.hpp
- * @brief Minimal Gaussian-style point splat loader and renderer.
+ * @brief Gaussian-style `.ply` loader and GPU-projected splat renderer.
  *
  * This module implements the C3 stretch objective in a controlled way.  It
- * ingests an ASCII or binary-little-endian `.ply` point cloud, repacks each
- * point into a compact GPU record, uploads those records into a VMA-backed
- * storage buffer, and renders each point as a soft alpha-blended billboard.
+ * ingests an ASCII or binary-little-endian `.ply` point cloud, converts the
+ * Gaussian attributes into a compact GPU storage-buffer layout, and lets the
+ * vertex shader project every splat into screen space each frame.
  *
- * This is intentionally not a full research-grade 3D Gaussian Splatting
- * implementation yet.  Full 3DGS needs covariance projection, spherical
- * harmonics, and depth-sorted alpha compositing.  Here I build the smallest
- * version that proves the renderer can load splat data and draw it on screen.
+ * This stays deliberately scoped as a stretch feature: it previews full PLY
+ * splat clouds with GPU-side projection while keeping the stable OBJ renderer
+ * independent from the splat pipeline.
  */
 
 #ifndef FYP_VULKAN_RENDERER_GAUSSIAN_SPLAT_HPP
@@ -19,8 +18,10 @@
 #include "gpu_buffer.hpp"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <vulkan/vulkan.h>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -29,23 +30,45 @@ class VulkanContext;
 
 /**
  * @struct GaussianPoint
- * @brief CPU/GPU record for one rendered splat.
+ * @brief CPU-side source data for one loaded 3D Gaussian.
  *
- * The layout is deliberately two `vec4`s so std430 storage-buffer layout in
- * GLSL matches the C++ memory layout cleanly.
+ * I keep this as the parsing/intermediate form.  Once import finishes, the
+ * data is packed into `GaussianGpuPoint` and uploaded to a device-local storage
+ * buffer so the render loop no longer touches every splat on the CPU.
  */
 struct GaussianPoint
 {
-    glm::vec4 positionOpacity{0.0f, 0.0f, 0.0f, 1.0f}; ///< XYZ position, W opacity.
-    glm::vec4 colorRadius{1.0f, 1.0f, 1.0f, 0.025f};  ///< RGB colour, W base radius.
+    glm::vec3 position{0.0f}; ///< Normalised world-space position.
+    glm::vec3 color{1.0f};    ///< Base colour recovered from RGB or SH DC values.
+    float opacity = 1.0f;     ///< Activated opacity in 0..1.
+    glm::vec3 scale{0.01f};   ///< Activated 3D Gaussian scale.
+    glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f}; ///< Normalised Gaussian rotation.
+    std::array<float, 6> covariance{}; ///< Precomputed upper triangle of the 3D covariance matrix.
+};
+
+/**
+ * @struct GaussianGpuPoint
+ * @brief Device-side Gaussian record consumed directly by the splat vertex shader.
+ *
+ * The layout uses four `vec4`-sized rows so std430 storage-buffer alignment is
+ * simple and predictable in both C++ and GLSL.  I precompute the 3D covariance
+ * once during import, then the shader only has to project it through the active
+ * camera each frame.
+ */
+struct GaussianGpuPoint
+{
+    glm::vec4 positionOpacity{0.0f}; ///< xyz = normalised position, w = activated opacity.
+    glm::vec4 color{1.0f}; ///< rgb = base colour, w unused padding.
+    glm::vec4 covarianceA{0.0f}; ///< xx, xy, xz, yy from the symmetric 3D covariance.
+    glm::vec4 covarianceB{0.0f}; ///< yz, zz, unused, unused from the symmetric 3D covariance.
 };
 
 /**
  * @class GaussianSplat
- * @brief Owns a `.ply` splat point buffer and the alpha-blended splat pipeline.
+ * @brief Owns `.ply` Gaussian data, one GPU storage buffer, and the splat pipeline.
  *
- * The class keeps the stretch feature separate from the mesh/PBR renderer so
- * I can demonstrate splats without disturbing the stable OBJ path.
+ * The class keeps the stretch feature separate from the mesh/PBR renderer, so
+ * I can work on splats without risking the stable OBJ path.
  */
 class GaussianSplat
 {
@@ -67,10 +90,11 @@ public:
                       VkFormat depthFormat);
 
     /**
-     * @brief Destroys only the pipeline objects.
+     * @brief Destroys only the graphics pipeline objects.
      *
      * I call this during swapchain rebuild because attachment formats are tied
-     * to the pipeline, while the uploaded point buffer can remain alive.
+     * to the pipeline.  The descriptor layout and uploaded buffers stay alive
+     * so the loaded splat file survives a resize.
      *
      * @param ctx Context that owns the VkDevice.
      */
@@ -80,9 +104,9 @@ public:
      * @brief Loads a `.ply` point cloud and uploads it to a storage buffer.
      *
      * Required properties are `x`, `y` and `z`.  Optional properties are
-     * `red`/`green`/`blue`, `opacity`, and `scale_0`/`scale_1`/`scale_2`.
-     * Missing optional values receive simple defaults so ordinary point clouds
-     * can still be displayed.
+     * `red`/`green`/`blue`, `f_dc_0..2`, `opacity`, `scale_0..2`, and
+     * `rot_0..3`.  Missing optional values receive defaults so ordinary point
+     * clouds can still be displayed.
      *
      * @param ctx Initialised Vulkan context.
      * @param path Filesystem path to the `.ply` file.
@@ -91,15 +115,19 @@ public:
     bool loadFromPly(const VulkanContext& ctx, const std::string& path);
 
     /**
-     * @brief Records the splat draw call into the active command buffer.
+     * @brief Records the full GPU-projected splat draw call.
      *
      * @param cmd Command buffer currently inside `vkCmdBeginRendering`.
-     * @param mvp Model-view-projection matrix used to place splats in the scene.
+     * @param modelView Model-to-view matrix; I pass the same rotating model transform as OBJ.
+     * @param projection Active view-to-clip projection matrix.
+     * @param extent Current swapchain extent in pixels.
      * @param radiusScale Runtime multiplier for splat size.
      * @param opacityScale Runtime multiplier for alpha.
      */
     void draw(VkCommandBuffer cmd,
-              const glm::mat4& mvp,
+              const glm::mat4& modelView,
+              const glm::mat4& projection,
+              VkExtent2D extent,
               float radiusScale,
               float opacityScale) const;
 
@@ -138,10 +166,10 @@ private:
     static VkShaderModule createShaderModule(VkDevice device,
                                              const std::vector<uint32_t>& code);
 
-    GpuBuffer::BufferResource m_pointBuffer{}; ///< Device-local storage buffer of GaussianPoint records.
+    GpuBuffer::BufferResource m_pointBuffer{}; ///< Device-local source Gaussian buffer read by the vertex shader.
+    VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
     VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
-    VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     uint32_t m_pointCount = 0;
