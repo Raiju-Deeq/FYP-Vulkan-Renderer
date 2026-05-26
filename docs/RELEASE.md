@@ -2,10 +2,10 @@
 
 This project uses semantic version tags for GitHub Releases.
 
-## v0.3.0 Release Checklist
+## v0.4.0 Release Checklist
 
 - Confirm the working tree is clean with `git status`.
-- Confirm `CMakeLists.txt` and `vcpkg.json` both report `0.3.0`.
+- Confirm `CMakeLists.txt` and `vcpkg.json` both report `0.4.0`.
 - Run a release build locally:
 
 ```powershell
@@ -17,32 +17,32 @@ cmake --build --preset uni-release
 - Create and push the release tag:
 
 ```powershell
-git tag -a v0.3.0 -m "Raiju Renderer v0.3.0"
+git tag -a v0.4.0 -m "Raiju Renderer v0.4.0"
 git push origin main
-git push origin v0.3.0
+git push origin v0.4.0
 ```
 
 The `release.yml` workflow will create a GitHub Release from the tag and attach:
 
-- `FYP-Vulkan-Renderer-v0.3.0-source.zip`
-- `Raiju-Renderer-v0.3.0-windows-x64.zip`
-- `Raiju-Renderer-v0.3.0-linux-x64.tar.gz`
+- `FYP-Vulkan-Renderer-v0.4.0-source.zip`
+- `Raiju-Renderer-v0.4.0-windows-x64.zip`
+- `Raiju-Renderer-v0.4.0-linux-x64.tar.gz`
 
 The Windows zip contains the executable, runtime DLLs, assets, shaders, README, and license.
 The Linux tarball contains the executable, assets, shaders, README, and license.
 
 ## Updating an Existing Release
 
-If the release already exists, push this workflow update to `main`, then run **GitHub Release** manually from the Actions tab using the existing tag, for example `v0.3.0`.
+If the release already exists, push this workflow update to `main`, then run **GitHub Release** manually from the Actions tab using the existing tag, for example `v0.4.0`.
 
 The workflow will rebuild the Windows and Linux packages and upload them to the existing release with `--clobber`.
 
 ## Release Notes Template
 
 ```markdown
-## Raiju Renderer v0.3.0
+## Raiju Renderer v0.4.0
 
-Gaussian splat prototype milestone release of the Vulkan renderer.
+Gaussian splatting implementation milestone release of the Vulkan renderer.
 
 ### Highlights
 
@@ -53,7 +53,9 @@ Gaussian splat prototype milestone release of the Vulkan renderer.
 - Optional PBR texture slots for base colour, metallic/roughness, AO, emissive, and reserved normal maps.
 - Runtime ImGui debug overlay.
 - Wireframe, back-face culling, normals view, and frame timing controls.
-- Experimental Gaussian-style PLY splat rendering.
+- GPU-projected Gaussian-style PLY splat rendering.
+- Covariance-based screen-space splat projection.
+- Alpha-blended conic splat evaluation.
 - Runtime OBJ/splat visibility toggles.
 - Linux and Windows CMake/vcpkg build workflow.
 

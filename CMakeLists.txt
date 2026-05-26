@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(vulkan-renderer VERSION 0.3.0 LANGUAGES CXX)
+project(vulkan-renderer VERSION 0.4.0 LANGUAGES CXX)
 
 # ── C++20 ────────────────────────────────────────────────────────────────────
 set(CMAKE_CXX_STANDARD 20)
