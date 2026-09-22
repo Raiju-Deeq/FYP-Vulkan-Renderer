@@ -12,7 +12,7 @@
 **Renderer version:** Textured OBJ + experimental Gaussian-style PLY splat vertical slice  
 **Graphics API:** Vulkan 1.3  
 **Language:** C++20  
-**Platforms:** Linux and Windows  
+**Platforms:** Linux and Windows, MacOSX
 
 Raiju Renderer is a compact real-time Vulkan renderer built to make explicit GPU programming visible, inspectable, and explainable. It demonstrates the full path from loading assets on disk to presenting rendered frames on screen through Vulkan instance/device setup, swapchain management, command recording, GPU uploads, synchronisation, Dynamic Rendering, descriptor binding, texture sampling, depth testing, debug UI, and presentation.
 
